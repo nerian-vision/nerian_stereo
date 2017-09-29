@@ -32,7 +32,7 @@ using namespace std;
  * it to ROS.
  *
  * SceneScan and SP1 by Nerian Vision Technologies are hardware systems for
- * real-time stereo vision. They transmit a computed disparity map (an 
+ * real-time stereo vision. They transmit a computed disparity map (an
  * inverse depth map) through gigagibt ethernet, which is then received by
  * this node. The node converts the received data into ROS messages, which
  * contain the following data:
@@ -153,13 +153,12 @@ public:
 
                 ros::Time stamp = ros::Time::now();
 
-                // Publish the selected messages
-                if(leftImagePublisher->getNumSubscribers() > 0) {
-                    publishImageMsg(imagePair, stamp);
-                }
-
-                if(disparityPublisher->getNumSubscribers() > 0 || rightImagePublisher->getNumSubscribers() > 0) {
-                    publishDispMapMsg(imagePair, stamp);
+                // Publish image data messages
+                publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
+                if(imagePair.isImageDisparityPair()) {
+                    publishImageMsg(imagePair, 1, stamp, true, disparityPublisher.get());
+                } else {
+                    publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher.get());
                 }
 
                 if(cloudPublisher->getNumSubscribers() > 0) {
@@ -249,40 +248,28 @@ private:
     }
 
     /**
-     * \brief Publishes a rectified left camera image
-     */
-    void publishImageMsg(const ImagePair& imagePair, ros::Time stamp) {
-        cv_bridge::CvImage cvImg;
-        cvImg.header.frame_id = frame;
-        cvImg.header.stamp = stamp;
-        cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
-
-        cvImg.image = cv::Mat_<unsigned char>(imagePair.getHeight(),
-            imagePair.getWidth(), imagePair.getPixelData(0), imagePair.getRowStride(0));
-        sensor_msgs::ImagePtr msg = cvImg.toImageMsg();
-
-
-        msg->encoding = "mono8";
-        leftImagePublisher->publish(msg);
-    }
-
-    /**
      * \brief Publishes the disparity map as 16-bit grayscale image or color coded
      * RGB image
      */
-    void publishDispMapMsg(const ImagePair& imagePair, ros::Time stamp) {
+    void publishImageMsg(const ImagePair& imagePair, int imageIndex, ros::Time stamp, bool allowColorCode,
+            ros::Publisher* publisher) {
+
+        if(publisher->getNumSubscribers() <= 0) {
+            return; //No subscribers
+        }
+
         cv_bridge::CvImage cvImg;
         cvImg.header.frame_id = frame;
         cvImg.header.stamp = stamp;
         cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
 
-        bool format12Bit = (imagePair.getPixelFormat(1) == ImagePair::FORMAT_12_BIT);
+        bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT);
         cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
             format12Bit ? CV_16UC1 : CV_8UC1,
-            imagePair.getPixelData(1), imagePair.getRowStride(1));
+            imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
         string encoding = "";
 
-        if(!colorCodeDispMap || !format12Bit) {
+        if(!colorCodeDispMap || !allowColorCode || !format12Bit) {
             cvImg.image = monoImg;
             encoding = (format12Bit ? "mono16": "mono8");
         } else {
@@ -305,13 +292,7 @@ private:
 
         sensor_msgs::ImagePtr msg = cvImg.toImageMsg();
         msg->encoding = encoding;
-
-        if(disparityPublisher->getNumSubscribers() > 0 && format12Bit) {
-            disparityPublisher->publish(msg);
-        }
-        if(rightImagePublisher->getNumSubscribers() > 0 && !format12Bit) {
-            rightImagePublisher->publish(msg);
-        }
+        publisher->publish(msg);
     }
 
     /**
@@ -398,20 +379,39 @@ private:
             unsigned char* cloudEnd = &pointCloudMsg->data[0]
                 + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
 
-            // Get pointer to the current pixel and end of current row
-            unsigned char* imagePtr = imagePair.getPixelData(0);
-            unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-            int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+            if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT) {
+                // Get pointer to the current pixel and end of current row
+                unsigned char* imagePtr = imagePair.getPixelData(0);
+                unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
+                int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
 
-            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
-                *cloudPtr = *imagePtr;
+                for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                        cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+                    *cloudPtr = *imagePtr;
 
-                imagePtr++;
-                if(imagePtr == rowEndPtr) {
-                    // Progress to next row
-                    imagePtr += rowIncrement;
-                    rowEndPtr = imagePtr + imagePair.getWidth();
+                    imagePtr++;
+                    if(imagePtr == rowEndPtr) {
+                        // Progress to next row
+                        imagePtr += rowIncrement;
+                        rowEndPtr = imagePtr + imagePair.getWidth();
+                    }
+                }
+            } else { // 12-bit
+                // Get pointer to the current pixel and end of current row
+                unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
+                unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
+                int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
+
+                for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                        cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+                    *cloudPtr = *imagePtr/16;
+
+                    imagePtr++;
+                    if(imagePtr == rowEndPtr) {
+                        // Progress to next row
+                        imagePtr += rowIncrement;
+                        rowEndPtr = imagePtr + imagePair.getWidth();
+                    }
                 }
             }
         }
