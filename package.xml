@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package>
+  <name>nerian_stereo</name>
+  <version>1.6.2</version>
+  <description>Driver node for SceneScan and SP1 stereo vision sensors by Nerian Vision Technologies</description>
+  <maintainer email="konstantin.schauwecker@nerian.com">Konstantin Schauwecker</maintainer>
+  <license>MIT</license>
+  <url type="website">http://wiki.ros.org/nerian_stereo</url>
+  <author email="service@nerian.com">Nerian Vision Technologies</author>
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>sdl</build_depend>
+  <build_depend>boost</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>sdl</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>boost</run_depend>
+
+  <export>
+  </export>
+</package>
