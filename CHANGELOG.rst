@@ -2,6 +2,12 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Renamed node to nerian_stereo
+* Updated to libvisiontransfer 5.0.0 to support new SceneScan sensor
+* Contributors: Konstantin Schauwecker
+
 1.6.2 (2017-05-30)
 ------------------
 * Allow launch even if calibration file is not found
