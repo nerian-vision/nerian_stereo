@@ -2,11 +2,15 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fixed support for 12-bit images
+* Fixed build problems
+
 2.0.0 (2017-09-29)
 ------------------
 * Renamed node to nerian_stereo
 * Updated to libvisiontransfer 5.0.0 to support new SceneScan sensor
-* Added support for 12-bit images
 * Contributors: Konstantin Schauwecker
 
 1.6.2 (2017-05-30)
