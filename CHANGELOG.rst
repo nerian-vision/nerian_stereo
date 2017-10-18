@@ -2,6 +2,11 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated to libvisiontransfer 5.0.1, which fixes synchronization bug
+* Contributors: Konstantin Schauwecker
+
 2.0.1 (2017-10-02)
 ------------------
 * Fixed support for 12-bit images
