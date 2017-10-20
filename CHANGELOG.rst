@@ -2,6 +2,11 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.3 (2017-10-20)
+------------------
+* Build fix for Ubuntu Zesty
+* Contributors: Konstantin Schauwecker
+
 2.0.2 (2017-10-18)
 ------------------
 * Updated to libvisiontransfer 5.0.1, which fixes synchronization bug
