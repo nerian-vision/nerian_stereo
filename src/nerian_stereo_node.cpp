@@ -67,7 +67,7 @@ public:
         }
 
         if (!privateNh.getParam("color_code_disparity_map", colorCodeDispMap)) {
-            colorCodeDispMap = true;
+            colorCodeDispMap = "";
         }
 
         if (!privateNh.getParam("color_code_legend", colorCodeLegend)) {
@@ -203,7 +203,7 @@ private:
     // Parameters
     bool intensityChannel;
     bool useTcp;
-    bool colorCodeDispMap;
+    std::string colorCodeDispMap;
     bool colorCodeLegend;
     bool rosCoordinateSystem;
     std::string remotePort;
@@ -269,12 +269,17 @@ private:
             imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
         string encoding = "";
 
-        if(!colorCodeDispMap || !allowColorCode || !format12Bit) {
+        if(colorCodeDispMap == "" || colorCodeDispMap == "none" || !allowColorCode || !format12Bit) {
             cvImg.image = monoImg;
             encoding = (format12Bit ? "mono16": "mono8");
         } else {
             if(colCoder == NULL) {
-                colCoder.reset(new ColorCoder(ColorCoder::COLOR_RED_BLUE_BGR, 0, 16*111, true, true));
+                int dispMin = 0, dispMax = 0;
+                imagePair.getDisparityRange(dispMin, dispMax);
+
+                colCoder.reset(new ColorCoder(
+                    colorCodeDispMap == "rainbow" ? ColorCoder::COLOR_RAINBOW_BGR : ColorCoder::COLOR_RED_BLUE_BGR,
+                    dispMin*16, dispMax*16, true, true));
                 if(colorCodeLegend) {
                     // Create the legend
                     colDispMap = colCoder->createLegendBorder(monoImg.cols, monoImg.rows, 1.0/16.0);
