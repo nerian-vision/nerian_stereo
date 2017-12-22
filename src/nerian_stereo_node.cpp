@@ -12,17 +12,17 @@
  * all copies or substantial portions of the Software.
  *******************************************************************************/
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <visiontransfer/asynctransfer.h>
 #include <visiontransfer/reconstruct3d.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/Image.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
-#include <cv_bridge/cv_bridge.h>
 #include <iostream>
 #include <iomanip>
-#include <nerian_stereo/StereoCameraInfo.h>
-#include <boost/smart_ptr.hpp>
+#include <memory>
+#include <chrono>
+#include <nerian_stereo/msg/stereo_camera_info.hpp>
 #include <colorcoder.h>
 
 using namespace std;
@@ -59,78 +59,108 @@ public:
      * \brief Performs general initializations
      */
     void init() {
-        ros::NodeHandle privateNh("~");
+        nodeObj = rclcpp::Node::make_shared("nerian_stereo");
+        clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
 
         // Read all ROS parameters
-        if (!privateNh.getParam("point_cloud_intensity_channel", intensityChannel)) {
+        // TODO: Test!
+
+        rclcpp::parameter::ParameterVariant param;
+        if(!nodeObj->get_parameter("point_cloud_intensity_channel", param)) {
             intensityChannel = true;
+        } else {
+            intensityChannel = param.as_bool();
         }
 
-        if (!privateNh.getParam("color_code_disparity_map", colorCodeDispMap)) {
+        if(!nodeObj->get_parameter("color_code_disparity_map", param)) {
             colorCodeDispMap = "";
+        } else {
+            colorCodeDispMap = param.as_string();
         }
 
-        if (!privateNh.getParam("color_code_legend", colorCodeLegend)) {
+        if(!nodeObj->get_parameter("color_code_legend", param)) {
             colorCodeLegend = false;
+        } else {
+            colorCodeLegend = param.as_bool();
         }
 
-        if (!privateNh.getParam("frame", frame)) {
+        if(!nodeObj->get_parameter("frame", param)) {
             frame = "world";
+        } else {
+            frame = param.as_string();
         }
 
-        if (!privateNh.getParam("remote_port", remotePort)) {
+        if(!nodeObj->get_parameter("remote_port", param)) {
             remotePort = "7681";
+        } else {
+            remotePort = param.as_string();
         }
 
-        if (!privateNh.getParam("remote_host", remoteHost)) {
+        if(!nodeObj->get_parameter("remote_host", param)) {
             remoteHost = "0.0.0.0";
+        } else {
+            remoteHost = param.as_string();
         }
 
-        if (!privateNh.getParam("local_port", localPort)) {
+        if(!nodeObj->get_parameter("local_port", param)) {
             localPort = "7681";
+        } else {
+            localPort = param.as_string();
         }
 
-        if (!privateNh.getParam("local_host", localHost)) {
+        if(!nodeObj->get_parameter("local_host", param)) {
             localHost = "0.0.0.0";
+        } else {
+            localHost = param.as_string();
         }
 
-        if (!privateNh.getParam("use_tcp", useTcp)) {
+        if(!nodeObj->get_parameter("use_tcp", param)) {
             useTcp = false;
+        } else {
+            useTcp = param.as_bool();
         }
 
-        if (!privateNh.getParam("ros_coordinate_system", rosCoordinateSystem)) {
+        if(!nodeObj->get_parameter("ros_coordinate_system", param)) {
             rosCoordinateSystem = true;
+        } else {
+            rosCoordinateSystem = param.as_bool();
         }
 
-        if (!privateNh.getParam("calibration_file", calibFile)) {
+        if(!nodeObj->get_parameter("calibration_file", param)) {
             calibFile = "";
+        } else {
+            calibFile = param.as_string();
         }
 
-        if (!privateNh.getParam("delay_execution", execDelay)) {
+        if(!nodeObj->get_parameter("delay_execution", param)) {
             execDelay = 0;
+        } else {
+            execDelay = param.as_int();
         }
 
-        if (!privateNh.getParam("max_depth", maxDepth)) {
+        if(!nodeObj->get_parameter("max_depth", param)) {
             maxDepth = -1;
+        } else {
+            maxDepth = param.as_int();
         }
 
         // Apply an initial delay if configured
-        ros::Duration(execDelay).sleep();
+        std::this_thread::sleep_for(std::chrono::duration<double>(execDelay));
 
         // Create publishers
-        disparityPublisher.reset(new ros::Publisher(nh.advertise<sensor_msgs::Image>(
-            "/nerian_stereo/disparity_map", 5)));
-        leftImagePublisher.reset(new ros::Publisher(nh.advertise<sensor_msgs::Image>(
-            "/nerian_stereo/left_image", 5)));
-        rightImagePublisher.reset(new ros::Publisher(nh.advertise<sensor_msgs::Image>(
-            "/nerian_stereo/right_image", 5)));
+        disparityPublisher = nodeObj->create_publisher<sensor_msgs::msg::Image>(
+            "/nerian_stereo/disparity_map", rmw_qos_profile_default);
+        leftImagePublisher = nodeObj->create_publisher<sensor_msgs::msg::Image>(
+            "/nerian_stereo/left_image", rmw_qos_profile_default);
+        rightImagePublisher = nodeObj->create_publisher<sensor_msgs::msg::Image>(
+            "/nerian_stereo/right_image", rmw_qos_profile_default);
 
         loadCameraCalibration();
 
-        cameraInfoPublisher.reset(new ros::Publisher(nh.advertise<nerian_stereo::StereoCameraInfo>(
-            "/nerian_stereo/stereo_camera_info", 1)));
-        cloudPublisher.reset(new ros::Publisher(nh.advertise<sensor_msgs::PointCloud2>(
-            "/nerian_stereo/point_cloud", 5)));
+        cameraInfoPublisher = nodeObj->create_publisher<nerian_stereo::msg::StereoCameraInfo>(
+            "/nerian_stereo/stereo_camera_info", rmw_qos_profile_default);
+        cloudPublisher = nodeObj->create_publisher<sensor_msgs::msg::PointCloud2>(
+            "/nerian_stereo/point_cloud", rmw_qos_profile_default);
     }
 
     /**
@@ -138,67 +168,69 @@ public:
      */
     int run() {
         try {
-            ros::Time lastLogTime;
+            rclcpp::Time lastLogTime = clock->now();
             int lastLogFrames = 0;
 
             AsyncTransfer asyncTransfer(useTcp ? ImageTransfer::TCP_CLIENT : ImageTransfer::UDP,
                 remoteHost.c_str(), remotePort.c_str(), localHost.c_str(), localPort.c_str());
 
-            while(ros::ok()) {
+            while(rclcpp::ok()) {
                 // Receive image data
                 ImagePair imagePair;
                 if(!asyncTransfer.collectReceivedImagePair(imagePair, 0.5)) {
                     continue;
                 }
 
-                ros::Time stamp = ros::Time::now();
+                rclcpp::Time stamp = clock->now();
 
                 // Publish image data messages
-                publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
+                publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher);
                 if(imagePair.isImageDisparityPair()) {
-                    publishImageMsg(imagePair, 1, stamp, true, disparityPublisher.get());
+                    publishImageMsg(imagePair, 1, stamp, true, disparityPublisher);
                 } else {
-                    publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher.get());
+                    publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher);
                 }
 
-                if(cloudPublisher->getNumSubscribers() > 0) {
+                // TODO
+                //if(cloudPublisher->getNumSubscribers() > 0) {
                     if(recon3d == nullptr) {
                         // First initialize
                         initPointCloud();
                     }
 
                     publishPointCloudMsg(imagePair, stamp);
-                }
+                //}
 
-                if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
+                // TODO
+                if(cameraInfoPublisher != NULL) {// && cameraInfoPublisher->getNumSubscribers() > 0) {
                     publishCameraInfo(stamp, imagePair);
                 }
 
                 // Display some simple statistics
                 frameNum++;
-                if(stamp.sec != lastLogTime.sec) {
-                    if(lastLogTime != ros::Time()) {
-                        double dt = (stamp - lastLogTime).toSec();
-                        double fps = (frameNum - lastLogFrames) / dt;
-                        ROS_INFO("%.1f fps", fps);
-                    }
+                uint64_t dt = stamp.nanoseconds() - lastLogTime.nanoseconds();
+                if(dt > 1e9) {
+                    double fps = (frameNum - lastLogFrames) / (dt*1e-9);
+                    printf("%.1f fps\n", fps);
+
                     lastLogFrames = frameNum;
                     lastLogTime = stamp;
                 }
             }
         } catch(const std::exception& ex) {
-            ROS_FATAL("Exception occured: %s", ex.what());
+            cerr << "Exception occured: %s" << ex.what() << endl;
         }
     }
 
 private:
     // ROS related objects
-    ros::NodeHandle nh;
-    boost::scoped_ptr<ros::Publisher> cloudPublisher;
-    boost::scoped_ptr<ros::Publisher> disparityPublisher;
-    boost::scoped_ptr<ros::Publisher> leftImagePublisher;
-    boost::scoped_ptr<ros::Publisher> rightImagePublisher;
-    boost::scoped_ptr<ros::Publisher> cameraInfoPublisher;
+    std::shared_ptr<rclcpp::Node> nodeObj;
+    std::shared_ptr<rclcpp::Clock> clock;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2> > cloudPublisher;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > disparityPublisher;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > leftImagePublisher;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > rightImagePublisher;
+    std::shared_ptr<rclcpp::Publisher<nerian_stereo::msg::StereoCameraInfo> > cameraInfoPublisher;
 
     // Parameters
     bool intensityChannel;
@@ -217,20 +249,20 @@ private:
 
     // Other members
     int frameNum;
-    boost::scoped_ptr<Reconstruct3D> recon3d;
-    boost::scoped_ptr<ColorCoder> colCoder;
+    std::shared_ptr<Reconstruct3D> recon3d;
+    std::shared_ptr<ColorCoder> colCoder;
     cv::Mat_<cv::Vec3b> colDispMap;
-    sensor_msgs::PointCloud2Ptr pointCloudMsg;
+    std::shared_ptr<sensor_msgs::msg::PointCloud2> pointCloudMsg;
     cv::FileStorage calibStorage;
-    nerian_stereo::StereoCameraInfoPtr camInfoMsg;
-    ros::Time lastCamInfoPublish;
+    std::shared_ptr<nerian_stereo::msg::StereoCameraInfo> camInfoMsg;
+    rclcpp::Time lastCamInfoPublish;
 
     /**
      * \brief Loads a camera calibration file if configured
      */
     void loadCameraCalibration() {
         if(calibFile == "" ) {
-            ROS_WARN("No camera calibration file configured. Cannot publish detailed camera information!");
+            cerr << "No camera calibration file configured. Cannot publish detailed camera information!" << endl;
         } else {
             bool success = false;
             try {
@@ -241,8 +273,8 @@ private:
             }
 
             if(!success) {
-                ROS_WARN("Error reading calibration file: %s\n"
-                    "Cannot publish detailed camera information!", calibFile.c_str());
+                cerr << "Error reading calibration file: " << calibFile.c_str() << endl
+                    << "Cannot publish detailed camera information!" << endl;
             }
         }
     }
@@ -251,27 +283,30 @@ private:
      * \brief Publishes the disparity map as 16-bit grayscale image or color coded
      * RGB image
      */
-    void publishImageMsg(const ImagePair& imagePair, int imageIndex, ros::Time stamp, bool allowColorCode,
-            ros::Publisher* publisher) {
+    void publishImageMsg(const ImagePair& imagePair, int imageIndex, rclcpp::Time stamp, bool allowColorCode,
+            std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > publisher) {
 
-        if(publisher->getNumSubscribers() <= 0) {
-            return; //No subscribers
-        }
+        // TODO
+        //if(publisher->getNumSubscribers() <= 0) {
+            //return; //No subscribers
+        //}
 
-        cv_bridge::CvImage cvImg;
-        cvImg.header.frame_id = frame;
-        cvImg.header.stamp = stamp;
-        cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
+        std::shared_ptr<sensor_msgs::msg::Image> msg = std::make_shared<sensor_msgs::msg::Image>();
+        msg->header.frame_id = frame;
+        msg->header.stamp = stamp;
 
         bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT);
         cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
             format12Bit ? CV_16UC1 : CV_8UC1,
             imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
-        string encoding = "";
 
         if(colorCodeDispMap == "" || colorCodeDispMap == "none" || !allowColorCode || !format12Bit) {
-            cvImg.image = monoImg;
-            encoding = (format12Bit ? "mono16": "mono8");
+            msg->encoding = (format12Bit ? "mono16": "mono8");
+            msg->height = monoImg.rows;
+            msg->width = monoImg.cols;
+            msg->step = static_cast<sensor_msgs::msg::Image::_step_type>(monoImg.step);
+            msg->data.resize(monoImg.step * monoImg.rows);
+            memcpy(&msg->data[0], monoImg.data, msg->data.size());
         } else {
             if(colCoder == NULL) {
                 int dispMin = 0, dispMax = 0;
@@ -289,14 +324,16 @@ private:
             }
 
             cv::Mat_<cv::Vec3b> dispSection = colDispMap(cv::Rect(0, 0, monoImg.cols, monoImg.rows));
-
             colCoder->codeImage(cv::Mat_<unsigned short>(monoImg), dispSection);
-            cvImg.image = colDispMap;
-            encoding = "bgr8";
+
+            msg->encoding = "bgr8";
+            msg->height = colDispMap.rows;
+            msg->width = colDispMap.cols;
+            msg->step = static_cast<sensor_msgs::msg::Image::_step_type>(colDispMap.step);
+            msg->data.resize(colDispMap.step * colDispMap.rows);
+            memcpy(&msg->data[0], colDispMap.data, msg->data.size());
         }
 
-        sensor_msgs::ImagePtr msg = cvImg.toImageMsg();
-        msg->encoding = encoding;
         publisher->publish(msg);
     }
 
@@ -322,7 +359,7 @@ private:
      * \brief Reconstructs the 3D locations form the disparity map and publishes them
      * as point cloud.
      */
-    void publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp) {
+    void publishPointCloudMsg(ImagePair& imagePair, rclcpp::Time stamp) {
         if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT) {
             return; // This is not a disparity map
         }
@@ -346,7 +383,6 @@ private:
         // Create message object and set header
         pointCloudMsg->header.stamp = stamp;
         pointCloudMsg->header.frame_id = frame;
-        pointCloudMsg->header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
 
         // Copy 3D points
         if(pointCloudMsg->data.size() != imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float)) {
@@ -449,41 +485,39 @@ private:
      * publishing
      */
     void initPointCloud() {
-        ros::NodeHandle privateNh("~");
-
         // Initialize 3D reconstruction class
         recon3d.reset(new Reconstruct3D);
 
         // Initialize message
-        pointCloudMsg.reset(new sensor_msgs::PointCloud2);
+        pointCloudMsg.reset(new sensor_msgs::msg::PointCloud2);
 
         // Set channel information.
-        sensor_msgs::PointField fieldX;
+        sensor_msgs::msg::PointField fieldX;
         fieldX.name ="x";
         fieldX.offset = 0;
-        fieldX.datatype = sensor_msgs::PointField::FLOAT32;
+        fieldX.datatype = sensor_msgs::msg::PointField::FLOAT32;
         fieldX.count = 1;
         pointCloudMsg->fields.push_back(fieldX);
 
-        sensor_msgs::PointField fieldY;
+        sensor_msgs::msg::PointField fieldY;
         fieldY.name ="y";
         fieldY.offset = sizeof(float);
-        fieldY.datatype = sensor_msgs::PointField::FLOAT32;
+        fieldY.datatype = sensor_msgs::msg::PointField::FLOAT32;
         fieldY.count = 1;
         pointCloudMsg->fields.push_back(fieldY);
 
-        sensor_msgs::PointField fieldZ;
+        sensor_msgs::msg::PointField fieldZ;
         fieldZ.name ="z";
         fieldZ.offset = 2*sizeof(float);
-        fieldZ.datatype = sensor_msgs::PointField::FLOAT32;
+        fieldZ.datatype = sensor_msgs::msg::PointField::FLOAT32;
         fieldZ.count = 1;
         pointCloudMsg->fields.push_back(fieldZ);
 
         if(intensityChannel) {
-            sensor_msgs::PointField fieldI;
+            sensor_msgs::msg::PointField fieldI;
             fieldI.name ="intensity";
             fieldI.offset = 3*sizeof(float);
-            fieldI.datatype = sensor_msgs::PointField::UINT8;
+            fieldI.datatype = sensor_msgs::msg::PointField::UINT8;
             fieldI.count = 1;
             pointCloudMsg->fields.push_back(fieldI);
         }
@@ -492,13 +526,12 @@ private:
     /**
      * \brief Publishes the camera info once per second
      */
-    void publishCameraInfo(ros::Time stamp, const ImagePair& imagePair) {
+    void publishCameraInfo(rclcpp::Time stamp, const ImagePair& imagePair) {
         if(camInfoMsg == NULL) {
             // Initialize the camera info structure
-            camInfoMsg.reset(new nerian_stereo::StereoCameraInfo);
+            camInfoMsg.reset(new nerian_stereo::msg::StereoCameraInfo);
 
             camInfoMsg->header.frame_id = frame;
-            camInfoMsg->header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
 
             if(calibFile != "") {
                 std::vector<int> sizeVec;
@@ -511,10 +544,10 @@ private:
                 camInfoMsg->left_info.width = sizeVec[0];
                 camInfoMsg->left_info.height = sizeVec[1];
                 camInfoMsg->left_info.distortion_model = "plumb_bob";
-                calibStorage["D1"] >> camInfoMsg->left_info.D;
-                readCalibrationArray("M1", camInfoMsg->left_info.K);
-                readCalibrationArray("R1", camInfoMsg->left_info.R);
-                readCalibrationArray("P1", camInfoMsg->left_info.P);
+                calibStorage["D1"] >> camInfoMsg->left_info.d;
+                readCalibrationArray("M1", camInfoMsg->left_info.k);
+                readCalibrationArray("R1", camInfoMsg->left_info.r);
+                readCalibrationArray("P1", camInfoMsg->left_info.p);
                 camInfoMsg->left_info.binning_x = 1;
                 camInfoMsg->left_info.binning_y = 1;
                 camInfoMsg->left_info.roi.do_rectify = false;
@@ -527,10 +560,10 @@ private:
                 camInfoMsg->right_info.width = sizeVec[0];
                 camInfoMsg->right_info.height = sizeVec[1];
                 camInfoMsg->right_info.distortion_model = "plumb_bob";
-                calibStorage["D2"] >> camInfoMsg->right_info.D;
-                readCalibrationArray("M2", camInfoMsg->right_info.K);
-                readCalibrationArray("R2", camInfoMsg->right_info.R);
-                readCalibrationArray("P2", camInfoMsg->right_info.P);
+                calibStorage["D2"] >> camInfoMsg->right_info.d;
+                readCalibrationArray("M2", camInfoMsg->right_info.k);
+                readCalibrationArray("R2", camInfoMsg->right_info.r);
+                readCalibrationArray("P2", camInfoMsg->right_info.p);
                 camInfoMsg->right_info.binning_x = 1;
                 camInfoMsg->right_info.binning_y = 1;
                 camInfoMsg->right_info.roi.do_rectify = false;
@@ -539,19 +572,19 @@ private:
                 camInfoMsg->right_info.roi.x_offset = 0;
                 camInfoMsg->right_info.roi.y_offset = 0;
 
-                readCalibrationArray("Q", camInfoMsg->Q);
-                readCalibrationArray("T", camInfoMsg->T_left_right);
-                readCalibrationArray("R", camInfoMsg->R_left_right);
+                readCalibrationArray("Q", camInfoMsg->q);
+                readCalibrationArray("T", camInfoMsg->t_left_right);
+                readCalibrationArray("R", camInfoMsg->r_left_right);
             }
         }
 
-        double dt = (stamp - lastCamInfoPublish).toSec();
-        if(dt > 1.0) {
+        uint64_t dt = stamp.nanoseconds() - lastCamInfoPublish.nanoseconds();
+        if(dt > 1e6) {
             // Rather use the Q-matrix that we received over the network if it is valid
             const float* qMatrix = imagePair.getQMatrix();
             if(qMatrix[0] != 0.0) {
                 for(int i=0; i<16; i++) {
-                    camInfoMsg->Q[i] = static_cast<double>(qMatrix[i]);
+                    camInfoMsg->q[i] = static_cast<double>(qMatrix[i]);
                 }
             }
 
@@ -583,12 +616,12 @@ private:
 
 int main(int argc, char** argv) {
     try {
-        ros::init(argc, argv, "nerian_stereo");
-        StereoNode node;
-        node.init();
-        return node.run();
+        rclcpp::init(argc, argv);
+        StereoNode stereoNode;
+        stereoNode.init();
+        return stereoNode.run();
     } catch(const std::exception& ex) {
-        ROS_FATAL("Exception occured: %s", ex.what());
+        cerr << "Exception occured: " <<  ex.what() << endl; // TODO:: Use ROS logging again
         return 1;
     }
 }
