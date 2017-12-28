@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016 Nerian Vision Technologies
+ * Copyright (c) 2017 Nerian Vision Technologies
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,8 @@ using namespace std;
 
 class StereoNode {
 public:
-    StereoNode(): frameNum(0) {
+    StereoNode(): publishPointCloud(false), publishDisparityMap(false),
+        publishLeftImage(false), publishRightImage(false), frameNum(0) {
     }
 
     ~StereoNode() {
@@ -166,7 +167,7 @@ public:
     /**
      * \brief The main loop of this node
      */
-    int run() {
+    void run() {
         try {
             rclcpp::Time lastLogTime = clock->now();
             int lastLogFrames = 0;
@@ -183,43 +184,33 @@ public:
 
                 rclcpp::Time stamp = clock->now();
 
-                // Publish image data messages
-                publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher);
-                if(imagePair.isImageDisparityPair()) {
-                    publishImageMsg(imagePair, 1, stamp, true, disparityPublisher);
-                } else {
-                    publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher);
-                }
-
-                // TODO
-                //if(cloudPublisher->getNumSubscribers() > 0) {
-                    if(recon3d == nullptr) {
-                        // First initialize
-                        initPointCloud();
-                    }
-
-                    publishPointCloudMsg(imagePair, stamp);
-                //}
-
-                // TODO
-                if(cameraInfoPublisher != NULL) {// && cameraInfoPublisher->getNumSubscribers() > 0) {
-                    publishCameraInfo(stamp, imagePair);
-                }
+                // Publish all messages
+                publishMessages(stamp, imagePair);
 
                 // Display some simple statistics
                 frameNum++;
                 uint64_t dt = stamp.nanoseconds() - lastLogTime.nanoseconds();
                 if(dt > 1e9) {
                     double fps = (frameNum - lastLogFrames) / (dt*1e-9);
-                    printf("%.1f fps\n", fps);
+                    RCLCPP_INFO(nodeObj->get_logger(), "%.1f fps", fps);
 
                     lastLogFrames = frameNum;
                     lastLogTime = stamp;
                 }
+
+                // Update state of all publishers
+                enableDisablePublishers();
             }
         } catch(const std::exception& ex) {
-            cerr << "Exception occured: %s" << ex.what() << endl;
+            RCLCPP_ERROR(nodeObj->get_logger(), "Exception occured: %s", ex.what());
         }
+    }
+
+     /**
+     * \brief Returns a pointer to the ROS node object
+     */
+    std::shared_ptr<rclcpp::Node> getNodeObject() {
+        return nodeObj;
     }
 
 private:
@@ -231,6 +222,12 @@ private:
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > leftImagePublisher;
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > rightImagePublisher;
     std::shared_ptr<rclcpp::Publisher<nerian_stereo::msg::StereoCameraInfo> > cameraInfoPublisher;
+
+    // Variables for keeping track of active publishers
+    bool publishPointCloud;
+    bool publishDisparityMap;
+    bool publishLeftImage;
+    bool publishRightImage;
 
     // Parameters
     bool intensityChannel;
@@ -262,7 +259,7 @@ private:
      */
     void loadCameraCalibration() {
         if(calibFile == "" ) {
-            cerr << "No camera calibration file configured. Cannot publish detailed camera information!" << endl;
+            RCLCPP_ERROR(nodeObj->get_logger(), "No camera calibration file configured. Cannot publish detailed camera information!");
         } else {
             bool success = false;
             try {
@@ -273,8 +270,8 @@ private:
             }
 
             if(!success) {
-                cerr << "Error reading calibration file: " << calibFile.c_str() << endl
-                    << "Cannot publish detailed camera information!" << endl;
+                RCLCPP_ERROR(nodeObj->get_logger(), "Error reading calibration file: %s", calibFile.c_str());
+                RCLCPP_ERROR(nodeObj->get_logger(), "Cannot publish detailed camera information!");
             }
         }
     }
@@ -285,11 +282,6 @@ private:
      */
     void publishImageMsg(const ImagePair& imagePair, int imageIndex, rclcpp::Time stamp, bool allowColorCode,
             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image> > publisher) {
-
-        // TODO
-        //if(publisher->getNumSubscribers() <= 0) {
-            //return; //No subscribers
-        //}
 
         std::shared_ptr<sensor_msgs::msg::Image> msg = std::make_shared<sensor_msgs::msg::Image>();
         msg->header.frame_id = frame;
@@ -376,7 +368,7 @@ private:
         try {
             pointMap = recon3d->createPointMap(imagePair, 0);
         } catch(std::exception& ex) {
-            cerr << "Error creating point cloud: " << ex.what() << endl;
+            RCLCPP_ERROR(nodeObj->get_logger(), "Error creating point cloud: %s", ex.what());
             return;
         }
 
@@ -599,7 +591,7 @@ private:
     }
 
     /**
-     * \brief Reads a vector from the calibration file to a boost:array
+     * \brief Reads a vector from the calibration file to a container type
      */
     template<class T>
     void readCalibrationArray(const char* key, T& dest) {
@@ -612,16 +604,64 @@ private:
 
         std::copy(doubleVec.begin(), doubleVec.end(), dest.begin());
     }
+
+    /**
+     * \brief Publishes all messages using the data of the current frame
+     */
+    void publishMessages(const rclcpp::Time& stamp, ImagePair& imagePair) {
+        // Publish image data messages
+        if(publishLeftImage) {
+            publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher);
+        }
+
+        if(imagePair.isImageDisparityPair()) {
+            if(publishDisparityMap) {
+                publishImageMsg(imagePair, 1, stamp, true, disparityPublisher);
+            }
+        } else if(publishRightImage) {
+            publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher);
+        }
+
+        // Publish 3D point cloud
+        if(publishPointCloud) {
+            if(recon3d == nullptr) {
+                // First initialize
+                initPointCloud();
+            }
+
+            publishPointCloudMsg(imagePair, stamp);
+        }
+
+        // Publish camera information
+        if(cameraInfoPublisher != NULL) {
+            publishCameraInfo(stamp, imagePair);
+        }
+    }
+
+    /**
+     * \brief Enables or disables publishers depending on whether they
+     * actually have any substribers.
+     */
+    void enableDisablePublishers() {
+        publishPointCloud = (nodeObj->count_subscribers(cloudPublisher->get_topic_name()) > 0);
+        publishDisparityMap = (nodeObj->count_subscribers(disparityPublisher->get_topic_name()) > 0);
+        publishLeftImage = (nodeObj->count_subscribers(leftImagePublisher->get_topic_name()) > 0);
+        publishRightImage = (nodeObj->count_subscribers(rightImagePublisher->get_topic_name()) > 0);
+    }
 };
 
 int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
+    StereoNode stereoNode;
+
     try {
-        rclcpp::init(argc, argv);
-        StereoNode stereoNode;
         stereoNode.init();
-        return stereoNode.run();
+        stereoNode.run();
     } catch(const std::exception& ex) {
-        cerr << "Exception occured: " <<  ex.what() << endl; // TODO:: Use ROS logging again
-        return 1;
+        RCLCPP_ERROR(stereoNode.getNodeObject()->get_logger(), "Exception occured:  %s", ex.what());
+        return -1;
     }
+
+    rclcpp::shutdown();
+    return 0;
 }
