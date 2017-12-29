@@ -144,8 +144,14 @@ install(FILES data/calib.yaml
     DESTINATION data
 )
 
-install(FILES launch/nerian_stereo.launch
-  DESTINATION launch
+install(
+    FILES
+    scripts/config_device_passthru.sh
+    scripts/config_device_rectify.sh
+    scripts/config_device_stereo.sh
+    scripts/download_calibration.sh
+    scripts/run_nerian_stereo.sh
+    DESTINATION scripts
 )
 
 ###################################

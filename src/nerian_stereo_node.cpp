@@ -59,94 +59,24 @@ public:
     /**
      * \brief Performs general initializations
      */
-    void init() {
+    void init(int argc, char** argv) {
         nodeObj = rclcpp::Node::make_shared("nerian_stereo");
         clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
 
         // Read all ROS parameters
-        // TODO: Test!
-
-        rclcpp::parameter::ParameterVariant param;
-        if(!nodeObj->get_parameter("point_cloud_intensity_channel", param)) {
-            intensityChannel = true;
-        } else {
-            intensityChannel = param.as_bool();
-        }
-
-        if(!nodeObj->get_parameter("color_code_disparity_map", param)) {
-            colorCodeDispMap = "";
-        } else {
-            colorCodeDispMap = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("color_code_legend", param)) {
-            colorCodeLegend = false;
-        } else {
-            colorCodeLegend = param.as_bool();
-        }
-
-        if(!nodeObj->get_parameter("frame", param)) {
-            frame = "world";
-        } else {
-            frame = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("remote_port", param)) {
-            remotePort = "7681";
-        } else {
-            remotePort = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("remote_host", param)) {
-            remoteHost = "0.0.0.0";
-        } else {
-            remoteHost = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("local_port", param)) {
-            localPort = "7681";
-        } else {
-            localPort = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("local_host", param)) {
-            localHost = "0.0.0.0";
-        } else {
-            localHost = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("use_tcp", param)) {
-            useTcp = false;
-        } else {
-            useTcp = param.as_bool();
-        }
-
-        if(!nodeObj->get_parameter("ros_coordinate_system", param)) {
-            rosCoordinateSystem = true;
-        } else {
-            rosCoordinateSystem = param.as_bool();
-        }
-
-        if(!nodeObj->get_parameter("calibration_file", param)) {
-            calibFile = "";
-        } else {
-            calibFile = param.as_string();
-        }
-
-        if(!nodeObj->get_parameter("delay_execution", param)) {
-            execDelay = 0;
-        } else {
-            execDelay = param.as_int();
-        }
-
-        if(!nodeObj->get_parameter("max_depth", param)) {
-            maxDepth = -1;
-        } else {
-            maxDepth = param.as_int();
-        }
-
-        // Apply an initial delay if configured
-        std::this_thread::sleep_for(std::chrono::duration<double>(execDelay));
+        RCLCPP_INFO(nodeObj->get_logger(), "Parameters")
+        readParameter("point_cloud_intensity_channel", intensityChannel, true, argc, argv);
+        readParameter("color_code_disparity_map", colorCodeDispMap, std::string(""), argc, argv);
+        readParameter("color_code_legend", colorCodeLegend, false, argc, argv);
+        readParameter("frame", frame, std::string("world"), argc, argv);
+        readParameter("remote_port", remotePort, std::string("7681"), argc, argv);
+        readParameter("remote_host", remoteHost, std::string("0.0.0.0"), argc, argv);
+        readParameter("local_port", localPort, std::string("7681"), argc, argv);
+        readParameter("local_host", localHost, std::string("0.0.0.0"), argc, argv);
+        readParameter("use_tcp", useTcp, false, argc, argv);
+        readParameter("ros_coordinate_system", rosCoordinateSystem, true, argc, argv);
+        readParameter("calibration_file", calibFile, std::string(""), argc, argv);
+        readParameter("max_depth", maxDepth, -1.0, argc, argv);
 
         // Create publishers
         disparityPublisher = nodeObj->create_publisher<sensor_msgs::msg::Image>(
@@ -241,7 +171,6 @@ private:
     std::string remoteHost;
     std::string localHost;
     std::string calibFile;
-    double execDelay;
     double maxDepth;
 
     // Other members
@@ -253,6 +182,52 @@ private:
     cv::FileStorage calibStorage;
     std::shared_ptr<nerian_stereo::msg::StereoCameraInfo> camInfoMsg;
     rclcpp::Time lastCamInfoPublish;
+
+    /**
+     * \brief Reads a ROS/command line parameter and sets the given variable
+     */
+    template<typename T>
+    void readParameter(const std::string& name, T& dest, const T& defaultValue, int argc, char** argv) {
+        // TODO: Convert to ROS parameters once this functionality is implemented in ROS 2
+        bool found = false;
+
+        for(int i=1; i<argc; i++) {
+            std::string prefix = name + ":=";
+            if(std::string(argv[i]).substr(0, prefix.length()) == prefix) {
+                std::string value = std::string(argv[i]).substr(prefix.length());
+                stringToParamType(value, dest);
+                found = true;
+                break;
+            }
+        }
+
+        if(!found) {
+            dest = defaultValue;
+        }
+
+        std::stringstream ss;
+        ss << name << " := " << dest;
+        RCLCPP_INFO(nodeObj->get_logger(), "%s", ss.str().c_str());
+    }
+
+    // Various overloaded conversion methods used for parsing parameters
+
+    void stringToParamType(const std::string value, bool& dest) {
+        dest = (value == "true" || value == "TRUE" || value == "True" || value == "1");
+    }
+
+    void stringToParamType(const std::string value, int& dest) {
+        dest = atoi(value.c_str());
+    }
+
+    void stringToParamType(const std::string value, double& dest) {
+        dest = atof(value.c_str());
+    }
+
+    void stringToParamType(const std::string value, std::string& dest) {
+        dest = value;
+    }
+
 
     /**
      * \brief Loads a camera calibration file if configured
@@ -655,7 +630,7 @@ int main(int argc, char** argv) {
     StereoNode stereoNode;
 
     try {
-        stereoNode.init();
+        stereoNode.init(argc, argv);
         stereoNode.run();
     } catch(const std::exception& ex) {
         RCLCPP_ERROR(stereoNode.getNodeObject()->get_logger(), "Exception occured:  %s", ex.what());
