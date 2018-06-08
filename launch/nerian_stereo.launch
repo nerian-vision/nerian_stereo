@@ -28,11 +28,8 @@
 
         <param name="use_tcp" type="bool" value="false" />
 
-        <param name="remote_host" type="string" value="0.0.0.0" />
+        <param name="remote_host" type="string" value="$(arg device_address)" />
         <param name="remote_port" type="string" value="7681" />
-
-        <param name="local_host" type="string" value="0.0.0.0" />
-        <param name="local_port" type="string" value="7681" />
 
         <param name="calibration_file" type="string" value="$(arg calib_file)"/>
         <param name="frame" type="string" value="map" />

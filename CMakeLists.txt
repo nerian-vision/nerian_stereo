@@ -41,7 +41,7 @@ catkin_package(
 ## libvisiontransfer ##
 #######################
 
-set(VT_VERSION 5_0_1)
+set(VT_VERSION 6_0_0)
 set(BUILD_VT 1)
 
 if(BUILD_VT)

@@ -90,14 +90,6 @@ public:
             remoteHost = "0.0.0.0";
         }
 
-        if (!privateNh.getParam("local_port", localPort)) {
-            localPort = "7681";
-        }
-
-        if (!privateNh.getParam("local_host", localHost)) {
-            localHost = "0.0.0.0";
-        }
-
         if (!privateNh.getParam("use_tcp", useTcp)) {
             useTcp = false;
         }
@@ -149,8 +141,8 @@ public:
             ros::Time lastLogTime;
             int lastLogFrames = 0;
 
-            AsyncTransfer asyncTransfer(useTcp ? ImageTransfer::TCP_CLIENT : ImageTransfer::UDP,
-                remoteHost.c_str(), remotePort.c_str(), localHost.c_str(), localPort.c_str());
+            AsyncTransfer asyncTransfer(remoteHost.c_str(), remotePort.c_str(),
+                useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP);
 
             while(ros::ok()) {
                 // Receive image data
@@ -216,10 +208,8 @@ private:
     bool colorCodeLegend;
     bool rosCoordinateSystem;
     std::string remotePort;
-    std::string localPort;
     std::string frame;
     std::string remoteHost;
-    std::string localHost;
     std::string calibFile;
     double execDelay;
     double maxDepth;
@@ -273,7 +263,7 @@ private:
         cvImg.header.stamp = stamp;
         cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
 
-        bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT);
+        bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT_MONO);
         cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
             format12Bit ? CV_16UC1 : CV_8UC1,
             imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
@@ -333,7 +323,7 @@ private:
      * as point cloud.
      */
     void publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp) {
-        if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT) {
+        if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT_MONO) {
             return; // This is not a disparity map
         }
 
@@ -413,7 +403,7 @@ private:
         unsigned char* cloudEnd = &pointCloudMsg->data[0]
             + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
 
-        if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT) {
+        if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
             // Get pointer to the current pixel and end of current row
             unsigned char* imagePtr = imagePair.getPixelData(0);
             unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
