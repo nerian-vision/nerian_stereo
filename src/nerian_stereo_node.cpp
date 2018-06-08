@@ -66,15 +66,17 @@ public:
         // Read all ROS parameters
         RCLCPP_INFO(nodeObj->get_logger(), "Parameters")
         readParameter("point_cloud_intensity_channel", intensityChannel, true, argc, argv);
+        readParameter("point_cloud_rgb_channel", rgbChannel, false, argc, argv);
         readParameter("color_code_disparity_map", colorCodeDispMap, std::string(""), argc, argv);
         readParameter("color_code_legend", colorCodeLegend, false, argc, argv);
         readParameter("frame", frame, std::string("world"), argc, argv);
         readParameter("remote_port", remotePort, std::string("7681"), argc, argv);
-        readParameter("remote_host", remoteHost, std::string("0.0.0.0"), argc, argv);
+        readParameter("remote_host", remoteHost, std::string("192.168.10.10"), argc, argv);
         readParameter("use_tcp", useTcp, false, argc, argv);
         readParameter("ros_coordinate_system", rosCoordinateSystem, true, argc, argv);
         readParameter("calibration_file", calibFile, std::string(""), argc, argv);
         readParameter("max_depth", maxDepth, -1.0, argc, argv);
+        readParameter("q_from_calib_file", useQFromCalibFile, false, argc, argv);
 
         // Create publishers
         disparityPublisher = nodeObj->create_publisher<sensor_msgs::msg::Image>(
@@ -99,7 +101,6 @@ public:
         try {
             rclcpp::Time lastLogTime = clock->now();
             int lastLogFrames = 0;
-
             AsyncTransfer asyncTransfer(remoteHost.c_str(), remotePort.c_str(),
                 useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP);
 
@@ -159,6 +160,7 @@ private:
 
     // Parameters
     bool intensityChannel;
+    bool rgbChannel;
     bool useTcp;
     std::string colorCodeDispMap;
     bool colorCodeLegend;
@@ -168,6 +170,7 @@ private:
     std::string remoteHost;
     std::string calibFile;
     double maxDepth;
+    bool useQFromCalibFile;
 
     // Other members
     int frameNum;
@@ -327,6 +330,13 @@ private:
             return; // This is not a disparity map
         }
 
+        // Set static q matrix if desired
+        if(useQFromCalibFile) {
+            static std::vector<float> q;
+            calibStorage["Q"] >> q;
+            imagePair.setQMatrix(&q[0]);
+        }
+
         // Transform Q-matrix if desired
         float qRos[16];
         if(rosCoordinateSystem) {
@@ -378,49 +388,66 @@ private:
 
         // Copy intensity values
         if(intensityChannel) {
-            // Get pointers to the beginnig and end of the point cloud
-            unsigned char* cloudStart = &pointCloudMsg->data[0];
-            unsigned char* cloudEnd = &pointCloudMsg->data[0]
-                + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
+            copyPointCloudIntensity<false>(imagePair);
+        } else if(rgbChannel) {
+            copyPointCloudIntensity<true>(imagePair);
+        }
+        cloudPublisher->publish(pointCloudMsg);
+    }
 
-            if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
-                // Get pointer to the current pixel and end of current row
-                unsigned char* imagePtr = imagePair.getPixelData(0);
-                unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-                int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+    /*
+     * \brief Copies the intensity data to the point cloud
+     */
+    template <bool useRgb> void copyPointCloudIntensity(ImagePair& imagePair) {
+        // Get pointers to the beginnig and end of the point cloud
+        unsigned char* cloudStart = &pointCloudMsg->data[0];
+        unsigned char* cloudEnd = &pointCloudMsg->data[0]
+            + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
 
-                for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                        cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+        if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
+            // Get pointer to the current pixel and end of current row
+            unsigned char* imagePtr = imagePair.getPixelData(0);
+            unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
+            int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+
+            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+                if(useRgb) {
+                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 255.0F; // RGB is float
+                } else {
                     *cloudPtr = *imagePtr;
-
-                    imagePtr++;
-                    if(imagePtr == rowEndPtr) {
-                        // Progress to next row
-                        imagePtr += rowIncrement;
-                        rowEndPtr = imagePtr + imagePair.getWidth();
-                    }
                 }
-            } else { // 12-bit
-                // Get pointer to the current pixel and end of current row
-                unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
-                unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
-                int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
 
-                for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                        cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+                imagePtr++;
+                if(imagePtr == rowEndPtr) {
+                    // Progress to next row
+                    imagePtr += rowIncrement;
+                    rowEndPtr = imagePtr + imagePair.getWidth();
+                }
+            }
+        } else { // 12-bit
+            // Get pointer to the current pixel and end of current row
+            unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
+            unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
+            int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
+
+            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+
+                if(useRgb) {
+                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 4095.0F; // RGB is float
+                } else {
                     *cloudPtr = *imagePtr/16;
+                }
 
-                    imagePtr++;
-                    if(imagePtr == rowEndPtr) {
-                        // Progress to next row
-                        imagePtr += rowIncrement;
-                        rowEndPtr = imagePtr + imagePair.getWidth();
-                    }
+                imagePtr++;
+                if(imagePtr == rowEndPtr) {
+                    // Progress to next row
+                    imagePtr += rowIncrement;
+                    rowEndPtr = imagePtr + imagePair.getWidth();
                 }
             }
         }
-
-        cloudPublisher->publish(pointCloudMsg);
     }
 
     /**
@@ -483,6 +510,28 @@ private:
             fieldI.datatype = sensor_msgs::msg::PointField::UINT8;
             fieldI.count = 1;
             pointCloudMsg->fields.push_back(fieldI);
+        }
+        else if(rgbChannel) {
+            sensor_msgs::msg::PointField fieldRed;
+            fieldRed.name ="r";
+            fieldRed.offset = 3*sizeof(float);
+            fieldRed.datatype = sensor_msgs::msg::PointField::FLOAT32;
+            fieldRed.count = 1;
+            pointCloudMsg->fields.push_back(fieldRed);
+
+            sensor_msgs::msg::PointField fieldGreen;
+            fieldGreen.name ="g";
+            fieldGreen.offset = 3*sizeof(float);
+            fieldGreen.datatype = sensor_msgs::msg::PointField::FLOAT32;
+            fieldGreen.count = 1;
+            pointCloudMsg->fields.push_back(fieldGreen);
+
+            sensor_msgs::msg::PointField fieldBlue;
+            fieldBlue.name ="b";
+            fieldBlue.offset = 3*sizeof(float);
+            fieldBlue.datatype = sensor_msgs::msg::PointField::FLOAT32;
+            fieldBlue.count = 1;
+            pointCloudMsg->fields.push_back(fieldBlue);
         }
     }
 
