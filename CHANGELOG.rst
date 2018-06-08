@@ -2,6 +2,12 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.0.0 (2017-12-29)
+------------------
+* First release for ROS 2
+* Major modifications to everything
+* Contributors: Konstantin Schauwecker
+
 2.1.0 (2017-12-09)
 ------------------
 * New color coding scheme: rainbow

@@ -71,8 +71,6 @@ public:
         readParameter("frame", frame, std::string("world"), argc, argv);
         readParameter("remote_port", remotePort, std::string("7681"), argc, argv);
         readParameter("remote_host", remoteHost, std::string("0.0.0.0"), argc, argv);
-        readParameter("local_port", localPort, std::string("7681"), argc, argv);
-        readParameter("local_host", localHost, std::string("0.0.0.0"), argc, argv);
         readParameter("use_tcp", useTcp, false, argc, argv);
         readParameter("ros_coordinate_system", rosCoordinateSystem, true, argc, argv);
         readParameter("calibration_file", calibFile, std::string(""), argc, argv);
@@ -102,8 +100,8 @@ public:
             rclcpp::Time lastLogTime = clock->now();
             int lastLogFrames = 0;
 
-            AsyncTransfer asyncTransfer(useTcp ? ImageTransfer::TCP_CLIENT : ImageTransfer::UDP,
-                remoteHost.c_str(), remotePort.c_str(), localHost.c_str(), localPort.c_str());
+            AsyncTransfer asyncTransfer(remoteHost.c_str(), remotePort.c_str(),
+                useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP);
 
             while(rclcpp::ok()) {
                 // Receive image data
@@ -166,10 +164,8 @@ private:
     bool colorCodeLegend;
     bool rosCoordinateSystem;
     std::string remotePort;
-    std::string localPort;
     std::string frame;
     std::string remoteHost;
-    std::string localHost;
     std::string calibFile;
     double maxDepth;
 
@@ -262,7 +258,7 @@ private:
         msg->header.frame_id = frame;
         msg->header.stamp = stamp;
 
-        bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT);
+        bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT_MONO);
         cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
             format12Bit ? CV_16UC1 : CV_8UC1,
             imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
@@ -327,7 +323,7 @@ private:
      * as point cloud.
      */
     void publishPointCloudMsg(ImagePair& imagePair, rclcpp::Time stamp) {
-        if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT) {
+        if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT_MONO) {
             return; // This is not a disparity map
         }
 
@@ -387,7 +383,7 @@ private:
             unsigned char* cloudEnd = &pointCloudMsg->data[0]
                 + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
 
-            if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT) {
+            if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
                 // Get pointer to the current pixel and end of current row
                 unsigned char* imagePtr = imagePair.getPixelData(0);
                 unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
