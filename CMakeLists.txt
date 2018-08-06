@@ -134,10 +134,10 @@ install(TARGETS nerian_stereo_node
 
 # Install scripts
 install(FILES
-    config_device_passthru.sh
-    config_device_rectify.sh
-    config_device_stereo.sh
-    download_calibration.sh
+    scripts/config_device_passthru.sh
+    scripts/config_device_rectify.sh
+    scripts/config_device_stereo.sh
+    scripts/download_calibration.sh
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
