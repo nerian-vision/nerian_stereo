@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.1 (2018-08-06)
+------------------
 * Installing missing scripts for binary release
 * Contributors: Konstantin Schauwecker
 
