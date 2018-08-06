@@ -132,6 +132,15 @@ install(TARGETS nerian_stereo_node
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+# Install scripts
+install(FILES
+    config_device_passthru.sh
+    config_device_rectify.sh
+    config_device_stereo.sh
+    download_calibration.sh
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 install(FILES data/calib.yaml
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/data
 )
