@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.2 (2018-08-07)
+------------------
 * Fixed build errors
 
 3.0.1 (2018-08-06)
