@@ -62,12 +62,16 @@ public:
         ros::NodeHandle privateNh("~");
 
         // Read all ROS parameters
-        if (!privateNh.getParam("point_cloud_intensity_channel", intensityChannel)) {
-            intensityChannel = true;
-        }
-
-        if (!privateNh.getParam("point_cloud_rgb_channel", rgbChannel)) {
-            rgbChannel = true;
+        std::string intensityChannel = "mono8";
+        privateNh.getParam("point_cloud_intensity_channel", intensityChannel);
+        if(intensityChannel == "none") {
+            pointCloudColorMode = NONE;
+        } else if(intensityChannel == "rgb8") {
+            pointCloudColorMode = RGB_COMBINED;
+        } else if(intensityChannel == "rgb32f") {
+            pointCloudColorMode = RGB_SEPARATE;
+        } else {
+            pointCloudColorMode = INTENSITY;
         }
 
         if (!privateNh.getParam("color_code_disparity_map", colorCodeDispMap)) {
@@ -192,6 +196,13 @@ public:
     }
 
 private:
+    enum PointCloudColorMode {
+        RGB_SEPARATE,
+        RGB_COMBINED,
+        INTENSITY,
+        NONE
+    };
+
     // ROS related objects
     ros::NodeHandle nh;
     boost::scoped_ptr<ros::Publisher> cloudPublisher;
@@ -201,8 +212,6 @@ private:
     boost::scoped_ptr<ros::Publisher> cameraInfoPublisher;
 
     // Parameters
-    bool intensityChannel;
-    bool rgbChannel;
     bool useTcp;
     std::string colorCodeDispMap;
     bool colorCodeLegend;
@@ -214,6 +223,7 @@ private:
     double execDelay;
     double maxDepth;
     bool useQFromCalibFile;
+    PointCloudColorMode pointCloudColorMode;
 
     // Other members
     int frameNum;
@@ -366,7 +376,7 @@ private:
             pointCloudMsg->is_bigendian = false;
             pointCloudMsg->point_step = 4*sizeof(float);
             pointCloudMsg->row_step = imagePair.getWidth() * pointCloudMsg->point_step;
-            pointCloudMsg->is_dense = false;
+            pointCloudMsg->is_dense = true;
         }
 
         if(maxDepth < 0) {
@@ -385,10 +395,16 @@ private:
         }
 
         // Copy intensity values
-        if(intensityChannel) {
-            copyPointCloudIntensity<false>(imagePair);
-        } else if(rgbChannel) {
-            copyPointCloudIntensity<true>(imagePair);
+        switch(pointCloudColorMode) {
+            case INTENSITY:
+                copyPointCloudIntensity<INTENSITY>(imagePair);
+                break;
+            case RGB_COMBINED:
+                copyPointCloudIntensity<RGB_COMBINED>(imagePair);
+                break;
+            case RGB_SEPARATE:
+                copyPointCloudIntensity<RGB_SEPARATE>(imagePair);
+                break;
         }
 
         cloudPublisher->publish(pointCloudMsg);
@@ -397,7 +413,7 @@ private:
     /*
      * \brief Copies the intensity data to the point cloud
      */
-    template <bool useRgb> void copyPointCloudIntensity(ImagePair& imagePair) {
+    template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair) {
         // Get pointers to the beginnig and end of the point cloud
         unsigned char* cloudStart = &pointCloudMsg->data[0];
         unsigned char* cloudEnd = &pointCloudMsg->data[0]
@@ -411,8 +427,11 @@ private:
 
             for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                     cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
-                if(useRgb) {
-                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 255.0F; // RGB is float
+                if(colorMode == RGB_SEPARATE) {// RGB as float
+                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 255.0F;
+                } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                    const unsigned char intensity = *imagePtr;
+                    *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
                 } else {
                     *cloudPtr = *imagePtr;
                 }
@@ -433,8 +452,11 @@ private:
             for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                     cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
 
-                if(useRgb) {
-                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 4095.0F; // RGB is float
+                if(colorMode == RGB_SEPARATE) {// RGB as float
+                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 4095.0F;
+                } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                    const unsigned char intensity = *imagePtr/16;
+                    *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
                 } else {
                     *cloudPtr = *imagePtr/16;
                 }
@@ -504,7 +526,7 @@ private:
         fieldZ.count = 1;
         pointCloudMsg->fields.push_back(fieldZ);
 
-        if(intensityChannel) {
+        if(pointCloudColorMode == INTENSITY) {
             sensor_msgs::PointField fieldI;
             fieldI.name ="intensity";
             fieldI.offset = 3*sizeof(float);
@@ -512,7 +534,7 @@ private:
             fieldI.count = 1;
             pointCloudMsg->fields.push_back(fieldI);
         }
-        else if(rgbChannel) {
+        else if(pointCloudColorMode == RGB_SEPARATE) {
             sensor_msgs::PointField fieldRed;
             fieldRed.name ="r";
             fieldRed.offset = 3*sizeof(float);
@@ -533,6 +555,13 @@ private:
             fieldBlue.datatype = sensor_msgs::PointField::FLOAT32;
             fieldBlue.count = 1;
             pointCloudMsg->fields.push_back(fieldBlue);
+        } else if(pointCloudColorMode == RGB_COMBINED) {
+            sensor_msgs::PointField fieldRGB;
+            fieldRGB.name ="rgb";
+            fieldRGB.offset = 3*sizeof(float);
+            fieldRGB.datatype = sensor_msgs::PointField::UINT32;
+            fieldRGB.count = 1;
+            pointCloudMsg->fields.push_back(fieldRGB);
         }
     }
 
