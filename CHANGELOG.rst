@@ -2,6 +2,13 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Removed arch=native flag from compiler options
+* Updated nerian vision software to 6.1.1
+* Added support for combined RGB color channel in pointcloud
+* Contributors: Konstantin Schauwecker
+
 3.0.2 (2018-08-07)
 ------------------
 * Fixed build errors
