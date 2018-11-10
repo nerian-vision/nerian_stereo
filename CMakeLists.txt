@@ -41,7 +41,7 @@ catkin_package(
 ## libvisiontransfer ##
 #######################
 
-set(VT_VERSION 6_0_0)
+set(VT_VERSION 6_1_1)
 set(BUILD_VT 1)
 
 if(BUILD_VT)
@@ -54,10 +54,17 @@ if(BUILD_VT)
         COMMAND tar --keep-newer-files --warning none -xJf ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/nerian-vision-software-${VT_VERSION}-src.tar.xz -C ${CMAKE_CURRENT_BINARY_DIR}
     )
 
+    # Check for SSE4.1
+    include(CheckCXXCompilerFlag)
+    CHECK_CXX_COMPILER_FLAG("-msse -msse2 -msse3 -msse4.1" SSE4_1_SUPPORT)
+    if(SSE4_1_SUPPORT)
+        set(VT_CXX_FLAGS ${CMAKE_CXX_FLAGS} -msse -msse2 -msse3 -msse4.1)
+    endif()
+
     # Build sources at runtime
     add_custom_target(nerian_stereo_visiontransfer_stub ALL
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/nerian-vision-software-${VT_VERSION}-src.tar.xz
-        COMMAND ${CMAKE_COMMAND} .
+        COMMAND ${CMAKE_COMMAND} . -DCMAKE_CXX_FLAGS="${VT_CXX_FLAGS}" -DDISABLE_NATIVE=1 -DDISABLE_PCL=1 -DDISABLE_OPENCV=1
         COMMAND make
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer
     )
