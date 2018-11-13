@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.1 (2018-11-13)
+------------------
 * Fixed CMake build problem
 * Contributors: Konstantin Schauwecker
 
