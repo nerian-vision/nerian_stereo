@@ -411,7 +411,7 @@ private:
     }
 
     /*
-     * \brief Copies the intensity data to the point cloud
+     * \brief Copies the intensity or RGB data to the point cloud
      */
     template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair) {
         // Get pointers to the beginnig and end of the point cloud
@@ -443,7 +443,7 @@ private:
                     rowEndPtr = imagePtr + imagePair.getWidth();
                 }
             }
-        } else { // 12-bit
+        } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_12_BIT_MONO) {
             // Get pointer to the current pixel and end of current row
             unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
             unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
@@ -468,6 +468,37 @@ private:
                     rowEndPtr = imagePtr + imagePair.getWidth();
                 }
             }
+        } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_RGB) {
+            // Get pointer to the current pixel and end of current row
+            unsigned char* imagePtr = imagePair.getPixelData(0);
+            unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
+            int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+
+            static bool warned = false;
+            if(colorMode == RGB_SEPARATE && !warned) {
+                warned = true;
+                ROS_WARN("RGBF32 is not supported for color images. Please use RGB8!");
+            }
+
+            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+                if(colorMode == RGB_SEPARATE) {// RGB as float
+                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(imagePtr[2]) / 255.0F;
+                } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                    *reinterpret_cast<unsigned int*>(cloudPtr) = (imagePtr[0] << 16) | (imagePtr[1] << 8) | imagePtr[2];
+                } else {
+                    *cloudPtr = (imagePtr[0] + imagePtr[1]*2 + imagePtr[2])/4;
+                }
+
+                imagePtr+=3;
+                if(imagePtr == rowEndPtr) {
+                    // Progress to next row
+                    imagePtr += rowIncrement;
+                    rowEndPtr = imagePtr + imagePair.getWidth();
+                }
+            }
+        } else {
+            throw std::runtime_error("Invalid pixel format!");
         }
     }
 
