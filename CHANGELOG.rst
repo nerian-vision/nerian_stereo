@@ -2,6 +2,13 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Added support for colored point clouds
+* Automated detection of libvisiontransfer version
+* Updated nerian vision software to 6.2.0
+* Contributors: Konstantin Schauwecker
+
 3.1.1 (2018-11-13)
 ------------------
 * Fixed CMake build problem
