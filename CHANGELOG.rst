@@ -2,6 +2,12 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated Nerian vision software to version 6.2.1
+* Added curl dependency to package.xml
+* Contributors: Konstantin Schauwecker
+
 3.2.0 (2018-11-27)
 ------------------
 * Added support for colored point clouds
