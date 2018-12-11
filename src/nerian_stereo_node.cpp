@@ -102,6 +102,10 @@ public:
             rosCoordinateSystem = true;
         }
 
+        if (!privateNh.getParam("ros_timestamps", rosTimestamps)) {
+            rosTimestamps = true;
+        }
+
         if (!privateNh.getParam("calibration_file", calibFile)) {
             calibFile = "";
         }
@@ -155,7 +159,15 @@ public:
                     continue;
                 }
 
-                ros::Time stamp = ros::Time::now();
+                // Get time stamp
+                ros::Time stamp;
+                if(rosTimestamps) {
+                    stamp = ros::Time::now();
+                } else {
+                    int secs = 0, microsecs = 0;
+                    imagePair.getTimestamp(secs, microsecs);
+                    stamp = ros::Time(secs, microsecs);
+                }
 
                 // Publish image data messages
                 publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
@@ -216,6 +228,7 @@ private:
     std::string colorCodeDispMap;
     bool colorCodeLegend;
     bool rosCoordinateSystem;
+    bool rosTimestamps;
     std::string remotePort;
     std::string frame;
     std::string remoteHost;
