@@ -165,7 +165,7 @@ public:
                     stamp = ros::Time::now();
                 } else {
                     int secs = 0, microsecs = 0;
-                    imagePair.getTimestamp(secs, microsecs);
+                    imagePair.getTimestamp(secs, 1000*microsecs);
                     stamp = ros::Time(secs, microsecs);
                 }
 
