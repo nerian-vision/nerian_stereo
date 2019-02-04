@@ -26,6 +26,7 @@
 #include <colorcoder.h>
 
 using namespace std;
+using namespace visiontransfer;
 
 /**
  * \brief A driver node that receives data from SceneScan/SP1 and forwards
