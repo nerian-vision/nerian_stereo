@@ -166,7 +166,7 @@ public:
                 } else {
                     int secs = 0, microsecs = 0;
                     imagePair.getTimestamp(secs, microsecs);
-                    stamp = ros::Time(secs, microsecs);
+                    stamp = ros::Time(secs, microsecs*1000);
                 }
 
                 // Publish image data messages
@@ -423,7 +423,7 @@ private:
         cloudPublisher->publish(pointCloudMsg);
     }
 
-    /*
+    /**
      * \brief Copies the intensity or RGB data to the point cloud
      */
     template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair) {
