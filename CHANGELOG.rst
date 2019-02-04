@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.3.0 (2019-02-04)
+------------------
 * Updated to Nerian vision software release 6.3.0
 * Added functionality to use timestamps from SceneScan for timestamping transmitted messages.
 * Contributors: Konstantin Schauwecker

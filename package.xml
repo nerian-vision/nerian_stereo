@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>nerian_stereo</name>
-  <version>3.2.1</version>
+  <version>3.3.0</version>
   <description>Driver node for SceneScan and SP1 stereo vision sensors by Nerian Vision Technologies</description>
   <maintainer email="konstantin.schauwecker@nerian.com">Konstantin Schauwecker</maintainer>
   <license>MIT</license>
