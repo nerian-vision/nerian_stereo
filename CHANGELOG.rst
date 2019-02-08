@@ -2,6 +2,10 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Compile fix for older Ubuntu versions
+
 3.3.0 (2019-02-04)
 ------------------
 * Updated to Nerian vision software release 6.4.0
