@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.3.1 (2019-02-08)
+------------------
 * Compile fix for older Ubuntu versions
 
 3.3.0 (2019-02-04)
