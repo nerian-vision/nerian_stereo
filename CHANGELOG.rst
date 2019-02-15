@@ -2,6 +2,11 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fixed installation permissions
+* Contributors: Konstantin Schauwecker
+
 3.3.1 (2019-02-08)
 ------------------
 * Compile fix for older Ubuntu versions
