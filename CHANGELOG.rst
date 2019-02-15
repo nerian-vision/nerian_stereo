@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.3.2 (2019-02-15)
+------------------
 * Fixed installation permissions
 * Contributors: Konstantin Schauwecker
 
