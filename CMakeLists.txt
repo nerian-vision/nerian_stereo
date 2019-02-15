@@ -156,6 +156,8 @@ install(FILES
     scripts/config_device_stereo.sh
     scripts/download_calibration.sh
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+                OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE
 )
 
 install(FILES data/calib.yaml
