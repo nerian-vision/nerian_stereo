@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016 Nerian Vision Technologies
+ * Copyright (c) 2019 Nerian Vision Technologies
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -390,7 +390,7 @@ private:
             pointCloudMsg->is_bigendian = false;
             pointCloudMsg->point_step = 4*sizeof(float);
             pointCloudMsg->row_step = imagePair.getWidth() * pointCloudMsg->point_step;
-            pointCloudMsg->is_dense = true;
+            pointCloudMsg->is_dense = false;
         }
 
         if(maxDepth < 0) {
