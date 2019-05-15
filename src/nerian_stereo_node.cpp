@@ -83,10 +83,54 @@ public:
         lastKnownConfig = config;
     }
 
-    void updateConfigFromDevice()
+    void updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg)
     {
-        std::map<std::string, ParameterInfo> cfg = sceneScanParameters->getAllParameters();
-        ROS_INFO("Device reported current operation_mode %d", cfg["operation_mode"].getValue<int>());
+        //ROS_INFO("Device reported current operation_mode %d", cfg["operation_mode"].getValue<int>());
+        // publish the current config to the parameter server
+        nh.setParam("/nerian_stereo/auto_exposure_mode", cfg["auto_exposure_mode"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_exposure_roi_enabled", cfg["auto_exposure_roi_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/auto_exposure_roi_height", cfg["auto_exposure_roi_height"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_exposure_roi_width", cfg["auto_exposure_roi_width"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_exposure_roi_x", cfg["auto_exposure_roi_x"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_exposure_roi_y", cfg["auto_exposure_roi_y"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_intensity_delta", cfg["auto_intensity_delta"].getValue<double>());
+        nh.setParam("/nerian_stereo/auto_maximum_exposure_time", cfg["auto_maximum_exposure_time"].getValue<double>());
+        nh.setParam("/nerian_stereo/auto_maximum_gain", cfg["auto_maximum_gain"].getValue<double>());
+        nh.setParam("/nerian_stereo/auto_recalibration_enabled", cfg["auto_recalibration_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/auto_recalibration_permanent", cfg["auto_recalibration_permanent"].getValue<bool>());
+        nh.setParam("/nerian_stereo/auto_skipped_frames", cfg["auto_skipped_frames"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_target_frame", cfg["auto_target_frame"].getValue<int>());
+        nh.setParam("/nerian_stereo/auto_target_intensity", cfg["auto_target_intensity"].getValue<double>());
+        nh.setParam("/nerian_stereo/consistency_check_enabled", cfg["consistency_check_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/consistency_check_sensitivity", cfg["consistency_check_sensitivity"].getValue<int>());
+        nh.setParam("/nerian_stereo/disparity_offset", cfg["disparity_offset"].getValue<int>());
+        nh.setParam("/nerian_stereo/gap_interpolation_enabled", cfg["gap_interpolation_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/manual_exposure_time", cfg["manual_exposure_time"].getValue<double>());
+        nh.setParam("/nerian_stereo/manual_gain", cfg["manual_gain"].getValue<double>());
+        nh.setParam("/nerian_stereo/mask_border_pixels_enabled", cfg["mask_border_pixels_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/max_frame_time_difference_ms", cfg["max_frame_time_difference_ms"].getValue<int>());
+        nh.setParam("/nerian_stereo/noise_reduction_enabled", cfg["noise_reduction_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/number_of_disparities", cfg["number_of_disparities"].getValue<int>());
+        nh.setParam("/nerian_stereo/operation_mode", cfg["operation_mode"].getValue<int>());
+        nh.setParam("/nerian_stereo/reboot", cfg["reboot"].getValue<bool>());
+        nh.setParam("/nerian_stereo/sgm_p1", cfg["sgm_p1"].getValue<int>());
+        nh.setParam("/nerian_stereo/sgm_p2", cfg["sgm_p2"].getValue<int>());
+        nh.setParam("/nerian_stereo/speckle_filter_iterations", cfg["speckle_filter_iterations"].getValue<int>());
+        nh.setParam("/nerian_stereo/texture_filter_enabled", cfg["texture_filter_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/texture_filter_sensitivity", cfg["texture_filter_sensitivity"].getValue<int>());
+        nh.setParam("/nerian_stereo/trigger_0_enabled", cfg["trigger_0_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/trigger_0_pulse_width", cfg["trigger_0_pulse_width"].getValue<double>());
+        nh.setParam("/nerian_stereo/trigger_1_enabled", cfg["trigger_1_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/trigger_1_offset", cfg["trigger_1_offset"].getValue<double>());
+        nh.setParam("/nerian_stereo/trigger_1_pulse_width", cfg["trigger_1_pulse_width"].getValue<double>());
+        nh.setParam("/nerian_stereo/trigger_frequency", cfg["trigger_frequency"].getValue<double>());
+        nh.setParam("/nerian_stereo/uniqueness_check_enabled", cfg["uniqueness_check_enabled"].getValue<bool>());
+        nh.setParam("/nerian_stereo/uniqueness_check_sensitivity", cfg["uniqueness_check_sensitivity"].getValue<int>());
+    }
+
+    void updateConfigFromDevice(std::map<std::string, ParameterInfo>& cfg)
+    {
+
         nerian_stereo::NerianStereoConfig config_default, config_min, config_max;
         // defaults
         config_default.auto_exposure_mode = cfg["auto_exposure_mode"].getValue<int>();
@@ -212,7 +256,6 @@ public:
         dynReconfServer->setConfigDefault(config_default);
         dynReconfServer->setConfigMax(config_max);
         dynReconfServer->setConfigMin(config_min);
-        //dynReconfServerLive = true;
     }
     /*
      * \brief Initialize and publish configuration with a dynamic_reconfigure server
@@ -221,10 +264,13 @@ public:
     {
         // Connect to parameter server on device
         sceneScanParameters.reset(new SceneScanParameters(remoteHost.c_str()));
+        std::map<std::string, ParameterInfo> ssParams = sceneScanParameters->getAllParameters();
+        // First make sure that the parameter server gets all *current* values
+        updateParameterServerFromDevice(ssParams);
         // Initialize (and publish) initial configuration from compile-time generated header
         dynReconfServer.reset(new dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>());
         // Obtain and publish the actual current configuration from the device
-        updateConfigFromDevice();
+        updateConfigFromDevice(ssParams);
         // hook up callback for future ROS-side changes
         dynReconfServer->setCallback(boost::bind(&StereoNode::dynamicReconfigureCallback, this, _1, _2));
     }
