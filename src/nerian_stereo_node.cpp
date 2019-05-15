@@ -25,6 +25,11 @@
 #include <boost/smart_ptr.hpp>
 #include <colorcoder.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <nerian_stereo/NerianStereoConfig.h>
+#include <visiontransfer/scenescanparameters.h>
+#include <visiontransfer/standardparameters.h> // TODO
+
 using namespace std;
 using namespace visiontransfer;
 
@@ -48,12 +53,180 @@ using namespace visiontransfer;
  * http://nerian.com/products/scenescan-stereo-vision/
  */
 
+class DynamicReconfigurationHandler {
+public:
+};
+
+
 class StereoNode {
 public:
-    StereoNode(): frameNum(0) {
+    StereoNode(): frameNum(0), initialConfigReceived(false) {
     }
 
     ~StereoNode() {
+    }
+
+    /*
+     * \brief Callback that receives an updated configuration from ROS
+     */
+    void dynamicReconfigureCallback(nerian_stereo::NerianStereoConfig &config, uint32_t level)
+    {
+        if (initialConfigReceived) {
+            ROS_INFO("Reconfigure request: new config object");
+            if (config.operation_mode != lastKnownConfig.operation_mode) {
+                ROS_INFO("-> operation_mode changed to %d", config.operation_mode);
+            }
+        } else {
+            ROS_INFO("Initial config received");
+            initialConfigReceived = true;
+        }
+        lastKnownConfig = config;
+    }
+
+    void updateConfigFromDevice()
+    {
+        std::map<std::string, ParameterInfo> cfg = sceneScanParameters->getAllParameters();
+        ROS_INFO("Device reported current operation_mode %d", cfg["operation_mode"].getValue<int>());
+        nerian_stereo::NerianStereoConfig config_default, config_min, config_max;
+        // defaults
+        config_default.auto_exposure_mode = cfg["auto_exposure_mode"].getValue<int>();
+        config_default.auto_exposure_roi_enabled = cfg["auto_exposure_roi_enabled"].getValue<bool>();
+        config_default.auto_exposure_roi_height = cfg["auto_exposure_roi_height"].getValue<int>();
+        config_default.auto_exposure_roi_width = cfg["auto_exposure_roi_width"].getValue<int>();
+        config_default.auto_exposure_roi_x = cfg["auto_exposure_roi_x"].getValue<int>();
+        config_default.auto_exposure_roi_y = cfg["auto_exposure_roi_y"].getValue<int>();
+        config_default.auto_intensity_delta = cfg["auto_intensity_delta"].getValue<double>();
+        config_default.auto_maximum_exposure_time = cfg["auto_maximum_exposure_time"].getValue<double>();
+        config_default.auto_maximum_gain = cfg["auto_maximum_gain"].getValue<double>();
+        config_default.auto_recalibration_enabled = cfg["auto_recalibration_enabled"].getValue<bool>();
+        config_default.auto_recalibration_permanent = cfg["auto_recalibration_permanent"].getValue<bool>();
+        config_default.auto_skipped_frames = cfg["auto_skipped_frames"].getValue<int>();
+        config_default.auto_target_frame = cfg["auto_target_frame"].getValue<int>();
+        config_default.auto_target_intensity = cfg["auto_target_intensity"].getValue<double>();
+        config_default.consistency_check_enabled = cfg["consistency_check_enabled"].getValue<bool>();
+        config_default.consistency_check_sensitivity = cfg["consistency_check_sensitivity"].getValue<int>();
+        config_default.disparity_offset = cfg["disparity_offset"].getValue<int>();
+        config_default.gap_interpolation_enabled = cfg["gap_interpolation_enabled"].getValue<bool>();
+        config_default.manual_exposure_time = cfg["manual_exposure_time"].getValue<double>();
+        config_default.manual_gain = cfg["manual_gain"].getValue<double>();
+        config_default.mask_border_pixels_enabled = cfg["mask_border_pixels_enabled"].getValue<bool>();
+        config_default.max_frame_time_difference_ms = cfg["max_frame_time_difference_ms"].getValue<int>();
+        config_default.noise_reduction_enabled = cfg["noise_reduction_enabled"].getValue<bool>();
+        config_default.number_of_disparities = cfg["number_of_disparities"].getValue<int>();
+        config_default.operation_mode = cfg["operation_mode"].getValue<int>();
+        config_default.reboot = cfg["reboot"].getValue<bool>();
+        config_default.sgm_p1 = cfg["sgm_p1"].getValue<int>();
+        config_default.sgm_p2 = cfg["sgm_p2"].getValue<int>();
+        config_default.speckle_filter_iterations = cfg["speckle_filter_iterations"].getValue<int>();
+        config_default.texture_filter_enabled = cfg["texture_filter_enabled"].getValue<bool>();
+        config_default.texture_filter_sensitivity = cfg["texture_filter_sensitivity"].getValue<int>();
+        config_default.trigger_0_enabled = cfg["trigger_0_enabled"].getValue<bool>();
+        config_default.trigger_0_pulse_width = cfg["trigger_0_pulse_width"].getValue<double>();
+        config_default.trigger_1_enabled = cfg["trigger_1_enabled"].getValue<bool>();
+        config_default.trigger_1_offset = cfg["trigger_1_offset"].getValue<double>();
+        config_default.trigger_1_pulse_width = cfg["trigger_1_pulse_width"].getValue<double>();
+        config_default.trigger_frequency = cfg["trigger_frequency"].getValue<double>();
+        config_default.uniqueness_check_enabled = cfg["uniqueness_check_enabled"].getValue<bool>();
+        config_default.uniqueness_check_sensitivity = cfg["uniqueness_check_sensitivity"].getValue<int>();
+        // min
+        config_min.auto_exposure_mode = cfg["auto_exposure_mode"].getMin<int>();
+        config_min.auto_exposure_roi_enabled = cfg["auto_exposure_roi_enabled"].getMin<bool>();
+        config_min.auto_exposure_roi_height = cfg["auto_exposure_roi_height"].getMin<int>();
+        config_min.auto_exposure_roi_width = cfg["auto_exposure_roi_width"].getMin<int>();
+        config_min.auto_exposure_roi_x = cfg["auto_exposure_roi_x"].getMin<int>();
+        config_min.auto_exposure_roi_y = cfg["auto_exposure_roi_y"].getMin<int>();
+        config_min.auto_intensity_delta = cfg["auto_intensity_delta"].getMin<double>();
+        config_min.auto_maximum_exposure_time = cfg["auto_maximum_exposure_time"].getMin<double>();
+        config_min.auto_maximum_gain = cfg["auto_maximum_gain"].getMin<double>();
+        config_min.auto_recalibration_enabled = cfg["auto_recalibration_enabled"].getMin<bool>();
+        config_min.auto_recalibration_permanent = cfg["auto_recalibration_permanent"].getMin<bool>();
+        config_min.auto_skipped_frames = cfg["auto_skipped_frames"].getMin<int>();
+        config_min.auto_target_frame = cfg["auto_target_frame"].getMin<int>();
+        config_min.auto_target_intensity = cfg["auto_target_intensity"].getMin<double>();
+        config_min.consistency_check_enabled = cfg["consistency_check_enabled"].getMin<bool>();
+        config_min.consistency_check_sensitivity = cfg["consistency_check_sensitivity"].getMin<int>();
+        config_min.disparity_offset = cfg["disparity_offset"].getMin<int>();
+        config_min.gap_interpolation_enabled = cfg["gap_interpolation_enabled"].getMin<bool>();
+        config_min.manual_exposure_time = cfg["manual_exposure_time"].getMin<double>();
+        config_min.manual_gain = cfg["manual_gain"].getMin<double>();
+        config_min.mask_border_pixels_enabled = cfg["mask_border_pixels_enabled"].getMin<bool>();
+        config_min.max_frame_time_difference_ms = cfg["max_frame_time_difference_ms"].getMin<int>();
+        config_min.noise_reduction_enabled = cfg["noise_reduction_enabled"].getMin<bool>();
+        config_min.number_of_disparities = cfg["number_of_disparities"].getMin<int>();
+        config_min.operation_mode = cfg["operation_mode"].getMin<int>();
+        config_min.reboot = cfg["reboot"].getMin<bool>();
+        config_min.sgm_p1 = cfg["sgm_p1"].getMin<int>();
+        config_min.sgm_p2 = cfg["sgm_p2"].getMin<int>();
+        config_min.speckle_filter_iterations = cfg["speckle_filter_iterations"].getMin<int>();
+        config_min.texture_filter_enabled = cfg["texture_filter_enabled"].getMin<bool>();
+        config_min.texture_filter_sensitivity = cfg["texture_filter_sensitivity"].getMin<int>();
+        config_min.trigger_0_enabled = cfg["trigger_0_enabled"].getMin<bool>();
+        config_min.trigger_0_pulse_width = cfg["trigger_0_pulse_width"].getMin<double>();
+        config_min.trigger_1_enabled = cfg["trigger_1_enabled"].getMin<bool>();
+        config_min.trigger_1_offset = cfg["trigger_1_offset"].getMin<double>();
+        config_min.trigger_1_pulse_width = cfg["trigger_1_pulse_width"].getMin<double>();
+        config_min.trigger_frequency = cfg["trigger_frequency"].getMin<double>();
+        config_min.uniqueness_check_enabled = cfg["uniqueness_check_enabled"].getMin<bool>();
+        config_min.uniqueness_check_sensitivity = cfg["uniqueness_check_sensitivity"].getMin<int>();
+        // max
+        config_max.auto_exposure_mode = cfg["auto_exposure_mode"].getMax<int>();
+        config_max.auto_exposure_roi_enabled = cfg["auto_exposure_roi_enabled"].getMax<bool>();
+        config_max.auto_exposure_roi_height = cfg["auto_exposure_roi_height"].getMax<int>();
+        config_max.auto_exposure_roi_width = cfg["auto_exposure_roi_width"].getMax<int>();
+        config_max.auto_exposure_roi_x = cfg["auto_exposure_roi_x"].getMax<int>();
+        config_max.auto_exposure_roi_y = cfg["auto_exposure_roi_y"].getMax<int>();
+        config_max.auto_intensity_delta = cfg["auto_intensity_delta"].getMax<double>();
+        config_max.auto_maximum_exposure_time = cfg["auto_maximum_exposure_time"].getMax<double>();
+        config_max.auto_maximum_gain = cfg["auto_maximum_gain"].getMax<double>();
+        config_max.auto_recalibration_enabled = cfg["auto_recalibration_enabled"].getMax<bool>();
+        config_max.auto_recalibration_permanent = cfg["auto_recalibration_permanent"].getMax<bool>();
+        config_max.auto_skipped_frames = cfg["auto_skipped_frames"].getMax<int>();
+        config_max.auto_target_frame = cfg["auto_target_frame"].getMax<int>();
+        config_max.auto_target_intensity = cfg["auto_target_intensity"].getMax<double>();
+        config_max.consistency_check_enabled = cfg["consistency_check_enabled"].getMax<bool>();
+        config_max.consistency_check_sensitivity = cfg["consistency_check_sensitivity"].getMax<int>();
+        config_max.disparity_offset = cfg["disparity_offset"].getMax<int>();
+        config_max.gap_interpolation_enabled = cfg["gap_interpolation_enabled"].getMax<bool>();
+        config_max.manual_exposure_time = cfg["manual_exposure_time"].getMax<double>();
+        config_max.manual_gain = cfg["manual_gain"].getMax<double>();
+        config_max.mask_border_pixels_enabled = cfg["mask_border_pixels_enabled"].getMax<bool>();
+        config_max.max_frame_time_difference_ms = cfg["max_frame_time_difference_ms"].getMax<int>();
+        config_max.noise_reduction_enabled = cfg["noise_reduction_enabled"].getMax<bool>();
+        config_max.number_of_disparities = cfg["number_of_disparities"].getMax<int>();
+        config_max.operation_mode = cfg["operation_mode"].getMax<int>();
+        config_max.reboot = cfg["reboot"].getMax<bool>();
+        config_max.sgm_p1 = cfg["sgm_p1"].getMax<int>();
+        config_max.sgm_p2 = cfg["sgm_p2"].getMax<int>();
+        config_max.speckle_filter_iterations = cfg["speckle_filter_iterations"].getMax<int>();
+        config_max.texture_filter_enabled = cfg["texture_filter_enabled"].getMax<bool>();
+        config_max.texture_filter_sensitivity = cfg["texture_filter_sensitivity"].getMax<int>();
+        config_max.trigger_0_enabled = cfg["trigger_0_enabled"].getMax<bool>();
+        config_max.trigger_0_pulse_width = cfg["trigger_0_pulse_width"].getMax<double>();
+        config_max.trigger_1_enabled = cfg["trigger_1_enabled"].getMax<bool>();
+        config_max.trigger_1_offset = cfg["trigger_1_offset"].getMax<double>();
+        config_max.trigger_1_pulse_width = cfg["trigger_1_pulse_width"].getMax<double>();
+        config_max.trigger_frequency = cfg["trigger_frequency"].getMax<double>();
+        config_max.uniqueness_check_enabled = cfg["uniqueness_check_enabled"].getMax<bool>();
+        config_max.uniqueness_check_sensitivity = cfg["uniqueness_check_sensitivity"].getMax<int>();
+        // publish them
+        dynReconfServer->setConfigDefault(config_default);
+        dynReconfServer->setConfigMax(config_max);
+        dynReconfServer->setConfigMin(config_min);
+        //dynReconfServerLive = true;
+    }
+    /*
+     * \brief Initialize and publish configuration with a dynamic_reconfigure server
+     */
+    void initDynamicReconfigure()
+    {
+        // Connect to parameter server on device
+        sceneScanParameters.reset(new SceneScanParameters(remoteHost.c_str()));
+        // Initialize (and publish) initial configuration from compile-time generated header
+        dynReconfServer.reset(new dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>());
+        // Obtain and publish the actual current configuration from the device
+        updateConfigFromDevice();
+        // hook up callback for future ROS-side changes
+        dynReconfServer->setCallback(boost::bind(&StereoNode::dynamicReconfigureCallback, this, _1, _2));
     }
 
     /**
@@ -154,6 +327,9 @@ public:
                 useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP);
 
             while(ros::ok()) {
+                // Dispatch any queued ROS callbacks
+                ros::spinOnce();
+
                 // Receive image data
                 ImagePair imagePair;
                 if(!asyncTransfer.collectReceivedImagePair(imagePair, 0.5)) {
@@ -223,6 +399,14 @@ private:
     boost::scoped_ptr<ros::Publisher> leftImagePublisher;
     boost::scoped_ptr<ros::Publisher> rightImagePublisher;
     boost::scoped_ptr<ros::Publisher> cameraInfoPublisher;
+
+    // ROS dynamic_reconfigure
+    boost::scoped_ptr<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>> dynReconfServer;
+    nerian_stereo::NerianStereoConfig lastKnownConfig;
+    bool initialConfigReceived;
+    
+    // Connection to parameter server on device
+    boost::scoped_ptr<SceneScanParameters> sceneScanParameters;
 
     // Parameters
     bool useTcp;
@@ -707,6 +891,7 @@ int main(int argc, char** argv) {
         ros::init(argc, argv, "nerian_stereo");
         StereoNode node;
         node.init();
+        node.initDynamicReconfigure();
         return node.run();
     } catch(const std::exception& ex) {
         ROS_FATAL("Exception occured: %s", ex.what());

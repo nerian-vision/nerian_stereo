@@ -5,7 +5,7 @@ project(nerian_stereo)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs cv_bridge
-    message_generation)
+    message_generation dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
 find_package(OpenCV REQUIRED)
@@ -20,6 +20,11 @@ add_message_files(FILES StereoCameraInfo.msg)
 
 # Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES sensor_msgs)
+
+# Generate config server C++ headers from the cfg file
+generate_dynamic_reconfigure_options(cfg/NerianStereo.cfg)
+include_directories(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../src/nerian_stereo/cfg/cpp)
 
 ###################################
 ## catkin specific configuration ##
@@ -90,12 +95,16 @@ if(BUILD_VT)
     )
 
     link_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer/lib)
+    
+    set(COLORCODER_SOURCE_FILE ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/nvcom/helpers/colorcoder.cpp)
 
 else()
 
     # Development settings: Use local libvisiontransfer
     link_directories($ENV{VISION_TRANSFER_LIB})
     include_directories($ENV{VISION_TRANSFER_INCLUDE})
+    set(COLORCODER_SOURCE_FILE $ENV{VISION_TRANSFER_INCLUDE}/../libnvshared/nvshared/imageproc/colorcoder.cpp)
+    include_directories($ENV{VISION_TRANSFER_INCLUDE}/../libnvshared/nvshared/imageproc)
 endif()
 
 ###########
@@ -123,13 +132,13 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 # Declare a C++ executable
 add_executable(nerian_stereo_node
     src/nerian_stereo_node.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/nvcom/helpers/colorcoder.cpp
+    ${COLORCODER_SOURCE_FILE}
 )
 
 # Add cmake target dependencies of the executable
 # same as for the library above
 add_dependencies(nerian_stereo_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-    nerian_stereo_visiontransfer_stub)
+    nerian_stereo_visiontransfer_stub ${PROJECT_NAME}_gencfg)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
