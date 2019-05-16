@@ -407,9 +407,9 @@ public:
         config_max.uniqueness_check_enabled = cfg["uniqueness_check_enabled"].getMax<bool>();
         config_max.uniqueness_check_sensitivity = cfg["uniqueness_check_sensitivity"].getMax<int>();
         // publish them
-        dynReconfServer->setConfigDefault(config_default);
-        dynReconfServer->setConfigMax(config_max);
         dynReconfServer->setConfigMin(config_min);
+        dynReconfServer->setConfigMax(config_max);
+        dynReconfServer->setConfigDefault(config_default);
     }
     /*
      * \brief Initialize and publish configuration with a dynamic_reconfigure server
