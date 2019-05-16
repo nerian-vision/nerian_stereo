@@ -71,162 +71,163 @@ public:
     void dynamicReconfigureCallback(nerian_stereo::NerianStereoConfig &config, uint32_t level)
     {
         if (initialConfigReceived) {
+            ROS_INFO("Received a new configuration via dynamic_reconfigure");
             // Unfortunately, we have to check for each potential change (no configuration deltas provided)
             std::stringstream ss;
             if (config.auto_exposure_mode != lastKnownConfig.auto_exposure_mode) {
-                ROS_INFO("Received request to set auto_exposure_mode = %s", std::to_string(config.auto_exposure_mode).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_mode = %s", std::to_string(config.auto_exposure_mode).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_mode", config.auto_exposure_mode);
             }
             if (config.auto_exposure_roi_enabled != lastKnownConfig.auto_exposure_roi_enabled) {
-                ROS_INFO("Received request to set auto_exposure_roi_enabled = %s", std::to_string(config.auto_exposure_roi_enabled).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_roi_enabled = %s", std::to_string(config.auto_exposure_roi_enabled).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_roi_enabled", config.auto_exposure_roi_enabled);
             }
             if (config.auto_exposure_roi_height != lastKnownConfig.auto_exposure_roi_height) {
-                ROS_INFO("Received request to set auto_exposure_roi_height = %s", std::to_string(config.auto_exposure_roi_height).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_roi_height = %s", std::to_string(config.auto_exposure_roi_height).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_roi_height", config.auto_exposure_roi_height);
             }
             if (config.auto_exposure_roi_width != lastKnownConfig.auto_exposure_roi_width) {
-                ROS_INFO("Received request to set auto_exposure_roi_width = %s", std::to_string(config.auto_exposure_roi_width).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_roi_width = %s", std::to_string(config.auto_exposure_roi_width).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_roi_width", config.auto_exposure_roi_width);
             }
             if (config.auto_exposure_roi_x != lastKnownConfig.auto_exposure_roi_x) {
-                ROS_INFO("Received request to set auto_exposure_roi_x = %s", std::to_string(config.auto_exposure_roi_x).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_roi_x = %s", std::to_string(config.auto_exposure_roi_x).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_roi_x", config.auto_exposure_roi_x);
             }
             if (config.auto_exposure_roi_y != lastKnownConfig.auto_exposure_roi_y) {
-                ROS_INFO("Received request to set auto_exposure_roi_y = %s", std::to_string(config.auto_exposure_roi_y).c_str());
+                ROS_INFO("Will attempt to set auto_exposure_roi_y = %s", std::to_string(config.auto_exposure_roi_y).c_str());
                 sceneScanParameters->setNamedParameter("auto_exposure_roi_y", config.auto_exposure_roi_y);
             }
             if (config.auto_intensity_delta != lastKnownConfig.auto_intensity_delta) {
-                ROS_INFO("Received request to set auto_intensity_delta = %s", std::to_string(config.auto_intensity_delta).c_str());
+                ROS_INFO("Will attempt to set auto_intensity_delta = %s", std::to_string(config.auto_intensity_delta).c_str());
                 sceneScanParameters->setNamedParameter("auto_intensity_delta", config.auto_intensity_delta);
             }
             if (config.auto_maximum_exposure_time != lastKnownConfig.auto_maximum_exposure_time) {
-                ROS_INFO("Received request to set auto_maximum_exposure_time = %s", std::to_string(config.auto_maximum_exposure_time).c_str());
+                ROS_INFO("Will attempt to set auto_maximum_exposure_time = %s", std::to_string(config.auto_maximum_exposure_time).c_str());
                 sceneScanParameters->setNamedParameter("auto_maximum_exposure_time", config.auto_maximum_exposure_time);
             }
             if (config.auto_maximum_gain != lastKnownConfig.auto_maximum_gain) {
-                ROS_INFO("Received request to set auto_maximum_gain = %s", std::to_string(config.auto_maximum_gain).c_str());
+                ROS_INFO("Will attempt to set auto_maximum_gain = %s", std::to_string(config.auto_maximum_gain).c_str());
                 sceneScanParameters->setNamedParameter("auto_maximum_gain", config.auto_maximum_gain);
             }
             if (config.auto_recalibration_enabled != lastKnownConfig.auto_recalibration_enabled) {
-                ROS_INFO("Received request to set auto_recalibration_enabled = %s", std::to_string(config.auto_recalibration_enabled).c_str());
+                ROS_INFO("Will attempt to set auto_recalibration_enabled = %s", std::to_string(config.auto_recalibration_enabled).c_str());
                 sceneScanParameters->setNamedParameter("auto_recalibration_enabled", config.auto_recalibration_enabled);
             }
             if (config.auto_recalibration_permanent != lastKnownConfig.auto_recalibration_permanent) {
-                ROS_INFO("Received request to set auto_recalibration_permanent = %s", std::to_string(config.auto_recalibration_permanent).c_str());
+                ROS_INFO("Will attempt to set auto_recalibration_permanent = %s", std::to_string(config.auto_recalibration_permanent).c_str());
                 sceneScanParameters->setNamedParameter("auto_recalibration_permanent", config.auto_recalibration_permanent);
             }
             if (config.auto_skipped_frames != lastKnownConfig.auto_skipped_frames) {
-                ROS_INFO("Received request to set auto_skipped_frames = %s", std::to_string(config.auto_skipped_frames).c_str());
+                ROS_INFO("Will attempt to set auto_skipped_frames = %s", std::to_string(config.auto_skipped_frames).c_str());
                 sceneScanParameters->setNamedParameter("auto_skipped_frames", config.auto_skipped_frames);
             }
             if (config.auto_target_frame != lastKnownConfig.auto_target_frame) {
-                ROS_INFO("Received request to set auto_target_frame = %s", std::to_string(config.auto_target_frame).c_str());
+                ROS_INFO("Will attempt to set auto_target_frame = %s", std::to_string(config.auto_target_frame).c_str());
                 sceneScanParameters->setNamedParameter("auto_target_frame", config.auto_target_frame);
             }
             if (config.auto_target_intensity != lastKnownConfig.auto_target_intensity) {
-                ROS_INFO("Received request to set auto_target_intensity = %s", std::to_string(config.auto_target_intensity).c_str());
+                ROS_INFO("Will attempt to set auto_target_intensity = %s", std::to_string(config.auto_target_intensity).c_str());
                 sceneScanParameters->setNamedParameter("auto_target_intensity", config.auto_target_intensity);
             }
             if (config.consistency_check_enabled != lastKnownConfig.consistency_check_enabled) {
-                ROS_INFO("Received request to set consistency_check_enabled = %s", std::to_string(config.consistency_check_enabled).c_str());
+                ROS_INFO("Will attempt to set consistency_check_enabled = %s", std::to_string(config.consistency_check_enabled).c_str());
                 sceneScanParameters->setNamedParameter("consistency_check_enabled", config.consistency_check_enabled);
             }
             if (config.consistency_check_sensitivity != lastKnownConfig.consistency_check_sensitivity) {
-                ROS_INFO("Received request to set consistency_check_sensitivity = %s", std::to_string(config.consistency_check_sensitivity).c_str());
+                ROS_INFO("Will attempt to set consistency_check_sensitivity = %s", std::to_string(config.consistency_check_sensitivity).c_str());
                 sceneScanParameters->setNamedParameter("consistency_check_sensitivity", config.consistency_check_sensitivity);
             }
             if (config.disparity_offset != lastKnownConfig.disparity_offset) {
-                ROS_INFO("Received request to set disparity_offset = %s", std::to_string(config.disparity_offset).c_str());
+                ROS_INFO("Will attempt to set disparity_offset = %s", std::to_string(config.disparity_offset).c_str());
                 sceneScanParameters->setNamedParameter("disparity_offset", config.disparity_offset);
             }
             if (config.gap_interpolation_enabled != lastKnownConfig.gap_interpolation_enabled) {
-                ROS_INFO("Received request to set gap_interpolation_enabled = %s", std::to_string(config.gap_interpolation_enabled).c_str());
+                ROS_INFO("Will attempt to set gap_interpolation_enabled = %s", std::to_string(config.gap_interpolation_enabled).c_str());
                 sceneScanParameters->setNamedParameter("gap_interpolation_enabled", config.gap_interpolation_enabled);
             }
             if (config.manual_exposure_time != lastKnownConfig.manual_exposure_time) {
-                ROS_INFO("Received request to set manual_exposure_time = %s", std::to_string(config.manual_exposure_time).c_str());
+                ROS_INFO("Will attempt to set manual_exposure_time = %s", std::to_string(config.manual_exposure_time).c_str());
                 sceneScanParameters->setNamedParameter("manual_exposure_time", config.manual_exposure_time);
             }
             if (config.manual_gain != lastKnownConfig.manual_gain) {
-                ROS_INFO("Received request to set manual_gain = %s", std::to_string(config.manual_gain).c_str());
+                ROS_INFO("Will attempt to set manual_gain = %s", std::to_string(config.manual_gain).c_str());
                 sceneScanParameters->setNamedParameter("manual_gain", config.manual_gain);
             }
             if (config.mask_border_pixels_enabled != lastKnownConfig.mask_border_pixels_enabled) {
-                ROS_INFO("Received request to set mask_border_pixels_enabled = %s", std::to_string(config.mask_border_pixels_enabled).c_str());
+                ROS_INFO("Will attempt to set mask_border_pixels_enabled = %s", std::to_string(config.mask_border_pixels_enabled).c_str());
                 sceneScanParameters->setNamedParameter("mask_border_pixels_enabled", config.mask_border_pixels_enabled);
             }
             if (config.max_frame_time_difference_ms != lastKnownConfig.max_frame_time_difference_ms) {
-                ROS_INFO("Received request to set max_frame_time_difference_ms = %s", std::to_string(config.max_frame_time_difference_ms).c_str());
+                ROS_INFO("Will attempt to set max_frame_time_difference_ms = %s", std::to_string(config.max_frame_time_difference_ms).c_str());
                 sceneScanParameters->setNamedParameter("max_frame_time_difference_ms", config.max_frame_time_difference_ms);
             }
             if (config.noise_reduction_enabled != lastKnownConfig.noise_reduction_enabled) {
-                ROS_INFO("Received request to set noise_reduction_enabled = %s", std::to_string(config.noise_reduction_enabled).c_str());
+                ROS_INFO("Will attempt to set noise_reduction_enabled = %s", std::to_string(config.noise_reduction_enabled).c_str());
                 sceneScanParameters->setNamedParameter("noise_reduction_enabled", config.noise_reduction_enabled);
             }
             if (config.number_of_disparities != lastKnownConfig.number_of_disparities) {
-                ROS_INFO("Received request to set number_of_disparities = %s", std::to_string(config.number_of_disparities).c_str());
+                ROS_INFO("Will attempt to set number_of_disparities = %s", std::to_string(config.number_of_disparities).c_str());
                 sceneScanParameters->setNamedParameter("number_of_disparities", config.number_of_disparities);
             }
             if (config.operation_mode != lastKnownConfig.operation_mode) {
-                ROS_INFO("Received request to set operation_mode = %s", std::to_string(config.operation_mode).c_str());
+                ROS_INFO("Will attempt to set operation_mode = %s", std::to_string(config.operation_mode).c_str());
                 sceneScanParameters->setNamedParameter("operation_mode", config.operation_mode);
             }
             if (config.reboot != lastKnownConfig.reboot) {
-                ROS_INFO("Received request to set reboot = %s", std::to_string(config.reboot).c_str());
+                ROS_INFO("Will attempt to set reboot = %s", std::to_string(config.reboot).c_str());
                 sceneScanParameters->setNamedParameter("reboot", config.reboot);
             }
             if (config.sgm_p1 != lastKnownConfig.sgm_p1) {
-                ROS_INFO("Received request to set sgm_p1 = %s", std::to_string(config.sgm_p1).c_str());
+                ROS_INFO("Will attempt to set sgm_p1 = %s", std::to_string(config.sgm_p1).c_str());
                 sceneScanParameters->setNamedParameter("sgm_p1", config.sgm_p1);
             }
             if (config.sgm_p2 != lastKnownConfig.sgm_p2) {
-                ROS_INFO("Received request to set sgm_p2 = %s", std::to_string(config.sgm_p2).c_str());
+                ROS_INFO("Will attempt to set sgm_p2 = %s", std::to_string(config.sgm_p2).c_str());
                 sceneScanParameters->setNamedParameter("sgm_p2", config.sgm_p2);
             }
             if (config.speckle_filter_iterations != lastKnownConfig.speckle_filter_iterations) {
-                ROS_INFO("Received request to set speckle_filter_iterations = %s", std::to_string(config.speckle_filter_iterations).c_str());
+                ROS_INFO("Will attempt to set speckle_filter_iterations = %s", std::to_string(config.speckle_filter_iterations).c_str());
                 sceneScanParameters->setNamedParameter("speckle_filter_iterations", config.speckle_filter_iterations);
             }
             if (config.texture_filter_enabled != lastKnownConfig.texture_filter_enabled) {
-                ROS_INFO("Received request to set texture_filter_enabled = %s", std::to_string(config.texture_filter_enabled).c_str());
+                ROS_INFO("Will attempt to set texture_filter_enabled = %s", std::to_string(config.texture_filter_enabled).c_str());
                 sceneScanParameters->setNamedParameter("texture_filter_enabled", config.texture_filter_enabled);
             }
             if (config.texture_filter_sensitivity != lastKnownConfig.texture_filter_sensitivity) {
-                ROS_INFO("Received request to set texture_filter_sensitivity = %s", std::to_string(config.texture_filter_sensitivity).c_str());
+                ROS_INFO("Will attempt to set texture_filter_sensitivity = %s", std::to_string(config.texture_filter_sensitivity).c_str());
                 sceneScanParameters->setNamedParameter("texture_filter_sensitivity", config.texture_filter_sensitivity);
             }
             if (config.trigger_0_enabled != lastKnownConfig.trigger_0_enabled) {
-                ROS_INFO("Received request to set trigger_0_enabled = %s", std::to_string(config.trigger_0_enabled).c_str());
+                ROS_INFO("Will attempt to set trigger_0_enabled = %s", std::to_string(config.trigger_0_enabled).c_str());
                 sceneScanParameters->setNamedParameter("trigger_0_enabled", config.trigger_0_enabled);
             }
             if (config.trigger_0_pulse_width != lastKnownConfig.trigger_0_pulse_width) {
-                ROS_INFO("Received request to set trigger_0_pulse_width = %s", std::to_string(config.trigger_0_pulse_width).c_str());
+                ROS_INFO("Will attempt to set trigger_0_pulse_width = %s", std::to_string(config.trigger_0_pulse_width).c_str());
                 sceneScanParameters->setNamedParameter("trigger_0_pulse_width", config.trigger_0_pulse_width);
             }
             if (config.trigger_1_enabled != lastKnownConfig.trigger_1_enabled) {
-                ROS_INFO("Received request to set trigger_1_enabled = %s", std::to_string(config.trigger_1_enabled).c_str());
+                ROS_INFO("Will attempt to set trigger_1_enabled = %s", std::to_string(config.trigger_1_enabled).c_str());
                 sceneScanParameters->setNamedParameter("trigger_1_enabled", config.trigger_1_enabled);
             }
             if (config.trigger_1_offset != lastKnownConfig.trigger_1_offset) {
-                ROS_INFO("Received request to set trigger_1_offset = %s", std::to_string(config.trigger_1_offset).c_str());
+                ROS_INFO("Will attempt to set trigger_1_offset = %s", std::to_string(config.trigger_1_offset).c_str());
                 sceneScanParameters->setNamedParameter("trigger_1_offset", config.trigger_1_offset);
             }
             if (config.trigger_1_pulse_width != lastKnownConfig.trigger_1_pulse_width) {
-                ROS_INFO("Received request to set trigger_1_pulse_width = %s", std::to_string(config.trigger_1_pulse_width).c_str());
+                ROS_INFO("Will attempt to set trigger_1_pulse_width = %s", std::to_string(config.trigger_1_pulse_width).c_str());
                 sceneScanParameters->setNamedParameter("trigger_1_pulse_width", config.trigger_1_pulse_width);
             }
             if (config.trigger_frequency != lastKnownConfig.trigger_frequency) {
-                ROS_INFO("Received request to set trigger_frequency = %s", std::to_string(config.trigger_frequency).c_str());
+                ROS_INFO("Will attempt to set trigger_frequency = %s", std::to_string(config.trigger_frequency).c_str());
                 sceneScanParameters->setNamedParameter("trigger_frequency", config.trigger_frequency);
             }
             if (config.uniqueness_check_enabled != lastKnownConfig.uniqueness_check_enabled) {
-                ROS_INFO("Received request to set uniqueness_check_enabled = %s", std::to_string(config.uniqueness_check_enabled).c_str());
+                ROS_INFO("Will attempt to set uniqueness_check_enabled = %s", std::to_string(config.uniqueness_check_enabled).c_str());
                 sceneScanParameters->setNamedParameter("uniqueness_check_enabled", config.uniqueness_check_enabled);
             }
             if (config.uniqueness_check_sensitivity != lastKnownConfig.uniqueness_check_sensitivity) {
-                ROS_INFO("Received request to set uniqueness_check_sensitivity = %s", std::to_string(config.uniqueness_check_sensitivity).c_str());
+                ROS_INFO("Will attempt to set uniqueness_check_sensitivity = %s", std::to_string(config.uniqueness_check_sensitivity).c_str());
                 sceneScanParameters->setNamedParameter("uniqueness_check_sensitivity", config.uniqueness_check_sensitivity);
             }
         } else {
@@ -237,8 +238,9 @@ public:
 
     void updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg)
     {
-        //ROS_INFO("Device reported current operation_mode %d", cfg["operation_mode"].getValue<int>());
-        // publish the current config to the parameter server
+        // Publish reboot flag to definitely be set to false in the parameter server
+        nh.setParam("/nerian_stereo/reboot", false);
+        // Publish the current config to the parameter server
         nh.setParam("/nerian_stereo/auto_exposure_mode", cfg["auto_exposure_mode"].getValue<int>());
         nh.setParam("/nerian_stereo/auto_exposure_roi_enabled", cfg["auto_exposure_roi_enabled"].getValue<bool>());
         nh.setParam("/nerian_stereo/auto_exposure_roi_height", cfg["auto_exposure_roi_height"].getValue<int>());
@@ -264,7 +266,7 @@ public:
         nh.setParam("/nerian_stereo/noise_reduction_enabled", cfg["noise_reduction_enabled"].getValue<bool>());
         nh.setParam("/nerian_stereo/number_of_disparities", cfg["number_of_disparities"].getValue<int>());
         nh.setParam("/nerian_stereo/operation_mode", cfg["operation_mode"].getValue<int>());
-        nh.setParam("/nerian_stereo/reboot", cfg["reboot"].getValue<bool>());
+        // nh.setParam("/nerian_stereo/reboot", cfg["reboot"].getValue<bool>());
         nh.setParam("/nerian_stereo/sgm_p1", cfg["sgm_p1"].getValue<int>());
         nh.setParam("/nerian_stereo/sgm_p2", cfg["sgm_p2"].getValue<int>());
         nh.setParam("/nerian_stereo/speckle_filter_iterations", cfg["speckle_filter_iterations"].getValue<int>());
@@ -514,69 +516,74 @@ public:
             "/nerian_stereo/point_cloud", 5)));
     }
 
+    void prepareAsyncTransfer()
+    {
+        asyncTransfer.reset(new AsyncTransfer(remoteHost.c_str(), remotePort.c_str(),
+            useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP));
+    }
+
+    void processOneImagePair() {
+        // Receive image data
+        ImagePair imagePair;
+        if(!asyncTransfer->collectReceivedImagePair(imagePair, 0.5)) {
+            return;
+        }
+
+        // Get time stamp
+        ros::Time stamp;
+        if(rosTimestamps) {
+            stamp = ros::Time::now();
+        } else {
+            int secs = 0, microsecs = 0;
+            imagePair.getTimestamp(secs, microsecs);
+            stamp = ros::Time(secs, microsecs*1000);
+        }
+
+        // Publish image data messages
+        publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
+        if(imagePair.isImageDisparityPair()) {
+            publishImageMsg(imagePair, 1, stamp, true, disparityPublisher.get());
+        } else {
+            publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher.get());
+        }
+
+        if(cloudPublisher->getNumSubscribers() > 0) {
+            if(recon3d == nullptr) {
+                // First initialize
+                initPointCloud();
+            }
+
+            publishPointCloudMsg(imagePair, stamp);
+        }
+
+        if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
+            publishCameraInfo(stamp, imagePair);
+        }
+
+        // Display some simple statistics
+        frameNum++;
+        if(stamp.sec != lastLogTime.sec) {
+            if(lastLogTime != ros::Time()) {
+                double dt = (stamp - lastLogTime).toSec();
+                double fps = (frameNum - lastLogFrames) / dt;
+                ROS_INFO("%.1f fps", fps);
+            }
+            lastLogFrames = frameNum;
+            lastLogTime = stamp;
+        }
+    }
+    
     /**
      * \brief The main loop of this node
      */
     int run() {
+        prepareAsyncTransfer();
         try {
-            ros::Time lastLogTime;
-            int lastLogFrames = 0;
-
-            AsyncTransfer asyncTransfer(remoteHost.c_str(), remotePort.c_str(),
-                useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP);
-
             while(ros::ok()) {
                 // Dispatch any queued ROS callbacks
                 ros::spinOnce();
-
-                // Receive image data
-                ImagePair imagePair;
-                if(!asyncTransfer.collectReceivedImagePair(imagePair, 0.5)) {
-                    continue;
-                }
-
-                // Get time stamp
-                ros::Time stamp;
-                if(rosTimestamps) {
-                    stamp = ros::Time::now();
-                } else {
-                    int secs = 0, microsecs = 0;
-                    imagePair.getTimestamp(secs, microsecs);
-                    stamp = ros::Time(secs, microsecs*1000);
-                }
-
-                // Publish image data messages
-                publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
-                if(imagePair.isImageDisparityPair()) {
-                    publishImageMsg(imagePair, 1, stamp, true, disparityPublisher.get());
-                } else {
-                    publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher.get());
-                }
-
-                if(cloudPublisher->getNumSubscribers() > 0) {
-                    if(recon3d == nullptr) {
-                        // First initialize
-                        initPointCloud();
-                    }
-
-                    publishPointCloudMsg(imagePair, stamp);
-                }
-
-                if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
-                    publishCameraInfo(stamp, imagePair);
-                }
-
-                // Display some simple statistics
-                frameNum++;
-                if(stamp.sec != lastLogTime.sec) {
-                    if(lastLogTime != ros::Time()) {
-                        double dt = (stamp - lastLogTime).toSec();
-                        double fps = (frameNum - lastLogFrames) / dt;
-                        ROS_INFO("%.1f fps", fps);
-                    }
-                    lastLogFrames = frameNum;
-                    lastLogTime = stamp;
-                }
+                // Get a single image pair and process it
+                processOneImagePair();
             }
         } catch(const std::exception& ex) {
             ROS_FATAL("Exception occured: %s", ex.what());
@@ -631,6 +638,11 @@ private:
     cv::FileStorage calibStorage;
     nerian_stereo::StereoCameraInfoPtr camInfoMsg;
     ros::Time lastCamInfoPublish;
+
+    boost::scoped_ptr<AsyncTransfer> asyncTransfer;
+    ros::Time lastLogTime;
+    int lastLogFrames = 0;
+
 
     /**
      * \brief Loads a camera calibration file if configured
