@@ -46,7 +46,7 @@ catkin_package(
 ## libvisiontransfer ##
 #######################
 
-set(BUILD_VT 1)
+set(BUILD_VT 0)
 
 if(BUILD_VT)
     # Find lib vision transfer
