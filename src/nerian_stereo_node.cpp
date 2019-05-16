@@ -28,7 +28,6 @@
 #include <dynamic_reconfigure/server.h>
 #include <nerian_stereo/NerianStereoConfig.h>
 #include <visiontransfer/scenescanparameters.h>
-#include <visiontransfer/standardparameters.h> // TODO
 
 using namespace std;
 using namespace visiontransfer;
