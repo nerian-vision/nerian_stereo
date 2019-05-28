@@ -146,6 +146,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 # Declare a C++ executable
 add_executable(nerian_stereo_node
     src/nerian_stereo_node.cpp
+    src/nerian_stereo_node_main.cpp
     cfg/cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
 )
