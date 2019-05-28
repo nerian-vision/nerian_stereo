@@ -33,7 +33,6 @@ int main(int argc, char** argv) {
         StereoNodeStandalone node;
         node.init();
         node.initDynamicReconfigure();
-        ROS_INFO("Run node ...");
         return node.run();
     } catch(const std::exception& ex) {
         ROS_FATAL("Exception occured: %s", ex.what());

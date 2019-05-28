@@ -210,14 +210,11 @@ void StereoNode::processOneImagePair() {
  * \brief The main loop of this node
  */
 int StereoNode::run() {
-    ROS_INFO("Prep async ...");
     prepareAsyncTransfer();
     try {
         while(ros::ok()) {
-            ROS_INFO("Spin ...");
             // Dispatch any queued ROS callbacks
             ros::spinOnce();
-            ROS_INFO("Get img ...");
             // Get a single image pair and process it
             processOneImagePair();
         }
