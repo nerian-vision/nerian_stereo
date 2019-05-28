@@ -160,6 +160,21 @@ add_dependencies(nerian_stereo_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin
 target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
   ${OpenCV_LIBS} visiontransfer)
 
+# Do the same things for the nodelet (library) version, too
+add_library(nerian_stereo_nodelet
+    src/nerian_stereo_node.cpp
+    src/nerian_stereo_nodelet.cpp
+    cfg/cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp
+    ${COLORCODER_SOURCE_FILE}
+)
+
+add_dependencies(nerian_stereo_nodelet ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+    nerian_stereo_visiontransfer_stub ${PROJECT_NAME}_gencfg)
+
+target_link_libraries(nerian_stereo_nodelet ${catkin_LIBRARIES} ${Boost_LIBRARIES}
+  ${OpenCV_LIBS} visiontransfer)
+
+
 #############
 ## Install ##
 #############
@@ -168,7 +183,7 @@ target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 # Mark executables and/or libraries for installation
-install(TARGETS nerian_stereo_node
+install(TARGETS nerian_stereo_node nerian_stereo_nodelet
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -189,6 +204,8 @@ install(FILES data/calib.yaml
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/data
 )
 
-install(FILES launch/nerian_stereo.launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+install(FILES
+    launch/nerian_stereo.launch
+    launch/nerian_stereo_nodelet.launch
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )

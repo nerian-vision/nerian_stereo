@@ -55,6 +55,8 @@ using namespace visiontransfer;
  * http://nerian.com/products/scenescan-stereo-vision/
  */
 
+namespace nerian_stereo {
+
 class StereoNode {
 public:
     StereoNode(): frameNum(0), initialConfigReceived(false) {
@@ -83,11 +85,6 @@ public:
     void prepareAsyncTransfer();
 
     void processOneImagePair();
-    
-    /**
-     * \brief The main loop of this node
-     */
-    int run();
 
 private:
     enum PointCloudColorMode {
@@ -307,6 +304,8 @@ private:
         std::copy(doubleVec.begin(), doubleVec.end(), dest.begin());
     }
 };
+
+} // namespace
 
 #endif
 

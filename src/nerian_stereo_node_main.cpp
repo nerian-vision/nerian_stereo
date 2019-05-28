@@ -14,23 +14,42 @@
 
 #include "nerian_stereo_node.h"
 
-class StereoNodeStandalone: public StereoNode {
+namespace nerian_stereo {
 
+class StereoNodeStandalone: public StereoNode {
 private:
-    // ROS related objects
+    // The standalone node has its own private node handles
     ros::NodeHandle nhInternal;
     ros::NodeHandle privateNhInternal;
-    inline ros::NodeHandle& getNH() { return nhInternal; }
-    inline ros::NodeHandle& getPrivateNH() { return privateNhInternal; }
+    inline ros::NodeHandle& getNH() override { return nhInternal; }
+    inline ros::NodeHandle& getPrivateNH() override { return privateNhInternal; }
 public:
-    StereoNodeStandalone(): privateNhInternal("~") {}
+    StereoNodeStandalone(): privateNhInternal("~") { }
+
+    /**
+     * \brief The main loop of this node
+     */
+    int run() {
+        prepareAsyncTransfer();
+        try {
+            while(ros::ok()) {
+                // Dispatch any queued ROS callbacks
+                ros::spinOnce();
+                // Get a single image pair and process it
+                processOneImagePair();
+            }
+        } catch(const std::exception& ex) {
+            ROS_FATAL("Exception occured: %s", ex.what());
+        }
+    }
 };
 
+} // namespace
 
 int main(int argc, char** argv) {
     try {
         ros::init(argc, argv, "nerian_stereo");
-        StereoNodeStandalone node;
+        nerian_stereo::StereoNodeStandalone node;
         node.init();
         node.initDynamicReconfigure();
         return node.run();

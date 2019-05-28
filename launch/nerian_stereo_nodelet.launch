@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="nodelet" type="nodelet" name="standalone_nodelet" args="manager" output="screen"/>
+  <node pkg="nodelet" type="nodelet" name="StereoNodelet" args="load nerian_stereo/StereoNodelet standalone_nodelet" output="screen">
+  </node>
+</launch>
+
