@@ -24,7 +24,21 @@ generate_messages(DEPENDENCIES sensor_msgs)
 # Generate config server C++ headers from the cfg file
 generate_dynamic_reconfigure_options(cfg/NerianStereo.cfg)
 include_directories(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../src/nerian_stereo/cfg/cpp)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/cfg/cpp)
+
+# Generate our own run-time parameter update code (from the same cfg file)
+message(STATUS "Generate parameter server / dynamic_reconfigure code ...")
+execute_process(COMMAND "python" "${CMAKE_CURRENT_LIST_DIR}/cfg/generate_nerian_config_cpp.py"
+                "NerianStereo.cfg"
+                "cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cfg"
+                RESULT_VARIABLE autogen_result
+                OUTPUT_VARIABLE autogen_output
+                ERROR_VARIABLE  autogen_output)
+if(autogen_result)
+    message(STATUS "Output of failing script:\n${autogen_output}")
+    message(SEND_ERROR "Failure in code generation script")
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -132,6 +146,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 # Declare a C++ executable
 add_executable(nerian_stereo_node
     src/nerian_stereo_node.cpp
+    cfg/cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
 )
 
