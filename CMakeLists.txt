@@ -191,9 +191,6 @@ install(TARGETS nerian_stereo_node nerian_stereo_nodelet
 
 # Install scripts
 install(FILES
-    scripts/config_device_passthru.sh
-    scripts/config_device_rectify.sh
-    scripts/config_device_stereo.sh
     scripts/download_calibration.sh
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
     PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
