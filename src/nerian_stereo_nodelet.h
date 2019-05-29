@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019 Nerian Vision Technologies
+ * Copyright (c) 2019 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -17,23 +17,15 @@
 
 namespace nerian_stereo {
 
-class StereoNodelet: public StereoNode, public nodelet::Nodelet {
+class StereoNodelet: public StereoNodeBase, public nodelet::Nodelet {
 private:
     // The nodelet does not initialize its own node handles
     inline ros::NodeHandle& getNH() override { return nodelet::Nodelet::getNodeHandle(); }
     inline ros::NodeHandle& getPrivateNH() override { return nodelet::Nodelet::getPrivateNodeHandle(); }
     ros::Timer timer;
 public:
-    void stereoIteration(const ros::TimerEvent&) {
-        processOneImagePair();
-    }
-    virtual void onInit() {
-        StereoNode::init();
-        StereoNode::initDynamicReconfigure();
-        prepareAsyncTransfer();
-        // 2kHz timer for lower latency (stereoIteration will then block)
-        timer = getNH().createTimer(ros::Duration(0.0005), &StereoNodelet::stereoIteration, this);
-    }
+    void stereoIteration(const ros::TimerEvent&);
+    virtual void onInit();
 };
 
 } // namespace

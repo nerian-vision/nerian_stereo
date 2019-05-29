@@ -1,15 +1,15 @@
 <launch>
     <!-- Configure the IP address of SceneScan/SP1 -->
-    <arg name="device_address" value="192.168.10.10" />
+    <arg name="device_address" default="192.168.10.10" />
 
     <!-- Configure the destination where the calibration will saved -->
-    <arg name="calib_file" value="/tmp/nerian_calib.yaml" />
+    <arg name="calib_file" default="/tmp/nerian_calib.yaml" />
+
+    <!-- Configure the name of the ROS node -->
+    <arg name="node_name" default="nerian_stereo_node" />
 
     <!-- Download the current camera calibration -->
     <node pkg="nerian_stereo" type="download_calibration.sh" args="$(arg device_address) $(arg calib_file)" name="download_calib" output="screen" />
-
-    <!-- Configure SceneScan/SP1 operation mode to stereo matching -->
-    <!-- <node pkg="nerian_stereo" type="config_device_stereo.sh" args="$(arg device_address)" name="config_device" output="screen" /> -->
 
     <!-- For debugging it is possible to configure a launch prefix -->
     <!-- <arg name="launchPrefix" value="gdb -ex 'catch throw' -ex run \-\-args" /> -->
@@ -17,7 +17,7 @@
     <arg name="launchPrefix" value="" />
 
     <!-- Launch the stereo node -->
-    <node pkg="nerian_stereo" type="nerian_stereo_node" name="nerian_stereo_node" output="screen" launch-prefix="$(arg launchPrefix)">
+    <node pkg="nerian_stereo" type="nerian_stereo_node" name="$(arg node_name)" output="screen" launch-prefix="$(arg launchPrefix)">
         <!-- possible values: none, mono8, rgb8, rgb32f -->
         <param name="point_cloud_intensity_channel" type="string" value="mono8" />
 

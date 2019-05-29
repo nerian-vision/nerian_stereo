@@ -29,9 +29,9 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/cfg/cpp)
 # Generate our own run-time parameter update code (from the same cfg file)
 message(STATUS "Generate parameter server / dynamic_reconfigure code ...")
 execute_process(COMMAND "python" "${CMAKE_CURRENT_LIST_DIR}/cfg/generate_nerian_config_cpp.py"
-                "NerianStereo.cfg"
-                "cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp"
-                WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cfg"
+                "cfg/NerianStereo.cfg"
+                "src/autogen_nerian_stereo_dynamic_reconfigure.cpp"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/"
                 RESULT_VARIABLE autogen_result
                 OUTPUT_VARIABLE autogen_output
                 ERROR_VARIABLE  autogen_output)
@@ -60,7 +60,7 @@ catkin_package(
 ## libvisiontransfer ##
 #######################
 
-set(BUILD_VT 0)
+set(BUILD_VT 1)
 
 if(BUILD_VT)
     # Find lib vision transfer
@@ -147,7 +147,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 add_executable(nerian_stereo_node
     src/nerian_stereo_node.cpp
     src/nerian_stereo_node_main.cpp
-    cfg/cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp
+    src/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
 )
 
@@ -164,7 +164,7 @@ target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
 add_library(nerian_stereo_nodelet
     src/nerian_stereo_node.cpp
     src/nerian_stereo_nodelet.cpp
-    cfg/cpp/nerian_stereo/autogen_nerian_stereo_dynamic_reconfigure.cpp
+    src/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
 )
 

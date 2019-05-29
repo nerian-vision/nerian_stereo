@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019 Nerian Vision Technologies
+ * Copyright (c) 2019 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -14,6 +14,22 @@
 
 #include <pluginlib/class_list_macros.h>
 #include "nerian_stereo_nodelet.h"
+
+namespace nerian_stereo {
+
+void StereoNodelet::stereoIteration(const ros::TimerEvent&) {
+    processOneImagePair();
+}
+
+void StereoNodelet::onInit() {
+    StereoNodeBase::init();
+    StereoNodeBase::initDynamicReconfigure();
+    prepareAsyncTransfer();
+    // 2kHz timer for lower latency (stereoIteration will then block)
+    timer = getNH().createTimer(ros::Duration(0.0005), &StereoNodelet::stereoIteration, this);
+}
+
+} // namespace
 
 PLUGINLIB_EXPORT_CLASS(nerian_stereo::StereoNodelet, nodelet::Nodelet)
 
