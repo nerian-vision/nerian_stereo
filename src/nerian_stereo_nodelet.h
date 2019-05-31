@@ -13,7 +13,7 @@
  *******************************************************************************/
 
 #include <nodelet/nodelet.h>
-#include "nerian_stereo_node.h"
+#include "nerian_stereo_node_base.h"
 
 namespace nerian_stereo {
 

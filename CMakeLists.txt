@@ -145,8 +145,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 
 # Declare a C++ executable
 add_executable(nerian_stereo_node
+    src/nerian_stereo_node_base.cpp
     src/nerian_stereo_node.cpp
-    src/nerian_stereo_node_main.cpp
     src/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
 )
@@ -162,7 +162,7 @@ target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
 
 # Do the same things for the nodelet (library) version, too
 add_library(nerian_stereo_nodelet
-    src/nerian_stereo_node.cpp
+    src/nerian_stereo_node_base.cpp
     src/nerian_stereo_nodelet.cpp
     src/autogen_nerian_stereo_dynamic_reconfigure.cpp
     ${COLORCODER_SOURCE_FILE}
