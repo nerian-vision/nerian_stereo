@@ -17,12 +17,6 @@
 namespace nerian_stereo {
 
 class StereoNode: public StereoNodeBase {
-private:
-    // The standalone node has its own private node handles
-    ros::NodeHandle nhInternal;
-    ros::NodeHandle privateNhInternal;
-    inline ros::NodeHandle& getNH() override { return nhInternal; }
-    inline ros::NodeHandle& getPrivateNH() override { return privateNhInternal; }
 public:
     StereoNode(): privateNhInternal("~") { }
 
@@ -42,21 +36,22 @@ public:
             ROS_FATAL("Exception occured: %s", ex.what());
         }
     }
+private:
+    // The standalone node has its own private node handles
+    ros::NodeHandle nhInternal;
+    ros::NodeHandle privateNhInternal;
+    inline ros::NodeHandle& getNH() override { return nhInternal; }
+    inline ros::NodeHandle& getPrivateNH() override { return privateNhInternal; }
 };
 
 } // namespace
 
 int main(int argc, char** argv) {
     try {
-        ROS_INFO("rosinit");
         ros::init(argc, argv, "nerian_stereo");
-        ROS_INFO("node");
         nerian_stereo::StereoNode node;
-        ROS_INFO("init");
         node.init();
-        ROS_INFO("initdyn");
         node.initDynamicReconfigure();
-        ROS_INFO("run");
         return node.run();
     } catch(const std::exception& ex) {
         ROS_FATAL("Exception occured: %s", ex.what());

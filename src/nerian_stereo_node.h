@@ -31,6 +31,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <nerian_stereo/NerianStereoConfig.h>
 #include <visiontransfer/scenescanparameters.h>
+#include <visiontransfer/exceptions.h>
 
 using namespace std;
 using namespace visiontransfer;
@@ -65,25 +66,24 @@ public:
     ~StereoNodeBase() {
     }
 
-    /*
-     * \brief Callback that receives an updated configuration from ROS
+    /**
+     * \brief Performs general initializations
      */
-    void dynamicReconfigureCallback(nerian_stereo::NerianStereoConfig &config, uint32_t level);
-    void updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg);
-    void updateConfigFromDevice(std::map<std::string, ParameterInfo>& cfg);
-    
+    void init();
+
     /*
      * \brief Initialize and publish configuration with a dynamic_reconfigure server
      */
     void initDynamicReconfigure();
 
     /**
-     * \brief Performs general initializations
+     * \brief Connects to the image service to request the stream of image pairs
      */
-    void init();
-
     void prepareAsyncTransfer();
 
+    /*
+     * \brief Collect and process a single image pair (or return after timeout if none are available)
+     */
     void processOneImagePair();
 
 private:
@@ -141,7 +141,6 @@ private:
     ros::Time lastLogTime;
     int lastLogFrames = 0;
 
-
     /**
      * \brief Loads a camera calibration file if configured
      */
@@ -169,114 +168,13 @@ private:
     /**
      * \brief Copies the intensity or RGB data to the point cloud
      */
-    template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair) {
-        // Get pointers to the beginnig and end of the point cloud
-        unsigned char* cloudStart = &pointCloudMsg->data[0];
-        unsigned char* cloudEnd = &pointCloudMsg->data[0]
-            + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
-
-        if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
-            // Get pointer to the current pixel and end of current row
-            unsigned char* imagePtr = imagePair.getPixelData(0);
-            unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-            int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
-
-            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
-                if(colorMode == RGB_SEPARATE) {// RGB as float
-                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 255.0F;
-                } else if(colorMode == RGB_COMBINED) {// RGB as integer
-                    const unsigned char intensity = *imagePtr;
-                    *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
-                } else {
-                    *cloudPtr = *imagePtr;
-                }
-
-                imagePtr++;
-                if(imagePtr == rowEndPtr) {
-                    // Progress to next row
-                    imagePtr += rowIncrement;
-                    rowEndPtr = imagePtr + imagePair.getWidth();
-                }
-            }
-        } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_12_BIT_MONO) {
-            // Get pointer to the current pixel and end of current row
-            unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
-            unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
-            int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
-
-            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
-
-                if(colorMode == RGB_SEPARATE) {// RGB as float
-                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 4095.0F;
-                } else if(colorMode == RGB_COMBINED) {// RGB as integer
-                    const unsigned char intensity = *imagePtr/16;
-                    *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
-                } else {
-                    *cloudPtr = *imagePtr/16;
-                }
-
-                imagePtr++;
-                if(imagePtr == rowEndPtr) {
-                    // Progress to next row
-                    imagePtr += rowIncrement;
-                    rowEndPtr = imagePtr + imagePair.getWidth();
-                }
-            }
-        } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_RGB) {
-            // Get pointer to the current pixel and end of current row
-            unsigned char* imagePtr = imagePair.getPixelData(0);
-            unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-            int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
-
-            static bool warned = false;
-            if(colorMode == RGB_SEPARATE && !warned) {
-                warned = true;
-                ROS_WARN("RGBF32 is not supported for color images. Please use RGB8!");
-            }
-
-            for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
-                    cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
-                if(colorMode == RGB_SEPARATE) {// RGB as float
-                    *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(imagePtr[2]) / 255.0F;
-                } else if(colorMode == RGB_COMBINED) {// RGB as integer
-                    *reinterpret_cast<unsigned int*>(cloudPtr) = (imagePtr[0] << 16) | (imagePtr[1] << 8) | imagePtr[2];
-                } else {
-                    *cloudPtr = (imagePtr[0] + imagePtr[1]*2 + imagePtr[2])/4;
-                }
-
-                imagePtr+=3;
-                if(imagePtr == rowEndPtr) {
-                    // Progress to next row
-                    imagePtr += rowIncrement;
-                    rowEndPtr = imagePtr + imagePair.getWidth();
-                }
-            }
-        } else {
-            throw std::runtime_error("Invalid pixel format!");
-        }
-    }
+    template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair);
 
     /**
      * \brief Copies all points in a point cloud that have a depth smaller
      * than maxDepth. Other points are set to NaN.
      */
-    template <int coord> void copyPointCloudClamped(float* src, float* dst, int size) {
-        // Only copy points that are below the minimum depth
-        float* endPtr = src + 4*size;
-        for(float *srcPtr = src, *dstPtr = dst; srcPtr < endPtr; srcPtr+=4, dstPtr+=4) {
-            if(srcPtr[coord] > maxDepth) {
-                dstPtr[0] = std::numeric_limits<float>::quiet_NaN();
-                dstPtr[1] = std::numeric_limits<float>::quiet_NaN();
-                dstPtr[2] = std::numeric_limits<float>::quiet_NaN();
-            } else {
-                dstPtr[0] = srcPtr[0];
-                dstPtr[1] = srcPtr[1];
-                dstPtr[2] = srcPtr[2];
-            }
-        }
-    }
+    template <int coord> void copyPointCloudClamped(float* src, float* dst, int size);
 
     /**
      * \brief Performs all neccessary initializations for point cloud+
@@ -292,22 +190,38 @@ private:
     /**
      * \brief Reads a vector from the calibration file to a boost:array
      */
-    template<class T>
-    void readCalibrationArray(const char* key, T& dest) {
-        std::vector<double> doubleVec;
-        calibStorage[key] >> doubleVec;
+    template<class T> void readCalibrationArray(const char* key, T& dest);
+    
+    /*
+     * \brief Callback that receives an updated configuration from ROS; internally uses autogen_dynamicReconfigureCallback
+     */
+    void dynamicReconfigureCallback(nerian_stereo::NerianStereoConfig &config, uint32_t level);
 
-        if(doubleVec.size() != dest.size()) {
-            std::runtime_error("Calibration file format error!");
-        }
+    /*
+     * \brief Forward parameters from the device as initial values to the ROS parameter server; internally uses autogen_updateParameterServerFromDevice
+     */
+    void updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg);
 
-        std::copy(doubleVec.begin(), doubleVec.end(), dest.begin());
-    }
+    /*
+     * \brief Uses parameters from the device as a run-time override for limits and defaults in the dynamic_reconfigure node; internally uses autogen_updateDynamicReconfigureFromDevice
+     */
+    void updateDynamicReconfigureFromDevice(std::map<std::string, ParameterInfo>& cfg);
 
-    // The following three implementations are autogenerated from the .cfg file
+
+    // The following three implementations are autogenerated by generate_nerian_config_cpp.py
+    //  by parsing cfg/NerianStereo.cfg (which is also used by dynamic_reconfigure)
+    /**
+     * \brief Auto-generated code to check for parameter changes and forward them to the device
+     */
     void autogen_dynamicReconfigureCallback(nerian_stereo::NerianStereoConfig &config, uint32_t level);
+    /**
+     * \brief Auto-generated code to set initial parameters according to those obtained from the device
+     */
     void autogen_updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg);
-    void autogen_updateConfigFromDevice(std::map<std::string, ParameterInfo>& cfg);
+    /**
+     * \brief Auto-generated code to override the dynamic_reconfigure limits and defaults for all parameters
+     */
+    void autogen_updateDynamicReconfigureFromDevice(std::map<std::string, ParameterInfo>& cfg);
 
 };
 

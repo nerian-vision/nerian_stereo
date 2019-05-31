@@ -35,26 +35,39 @@ void StereoNodeBase::updateParameterServerFromDevice(std::map<std::string, Param
     getNH().setParam("/nerian_stereo/reboot", false);
 }
 
-void StereoNodeBase::updateConfigFromDevice(std::map<std::string, ParameterInfo>& cfg) {
-    autogen_updateConfigFromDevice(cfg);
+void StereoNodeBase::updateDynamicReconfigureFromDevice(std::map<std::string, ParameterInfo>& cfg) {
+    autogen_updateDynamicReconfigureFromDevice(cfg);
 }
 /*
  * \brief Initialize and publish configuration with a dynamic_reconfigure server
  */
 void StereoNodeBase::initDynamicReconfigure() {
+    std::map<std::string, ParameterInfo> ssParams;
     // Connect to parameter server on device
-    ROS_INFO("Connecting to parameter service of device at %s", remoteHost.c_str());
-    sceneScanParameters = boost::make_shared<SceneScanParameters>(remoteHost.c_str());
-    std::map<std::string, ParameterInfo> ssParams = sceneScanParameters->getAllParameters();
+    ROS_INFO("Connecting to %s for parameter service", remoteHost.c_str());
+    try {
+        sceneScanParameters = boost::make_shared<SceneScanParameters>(remoteHost.c_str());
+    } catch(visiontransfer::ParameterException& e) {
+        ROS_ERROR("ParameterException while connecting to parameter service: %s", e.what());
+        throw;
+    }
+    try {
+        ssParams = sceneScanParameters->getAllParameters();
+    } catch(visiontransfer::TransferException& e) {
+        ROS_ERROR("TransferException while obtaining parameter enumeration: %s", e.what());
+        throw;
+    } catch(visiontransfer::ParameterException& e) {
+        ROS_ERROR("ParameterException while obtaining parameter enumeration: %s", e.what());
+        throw;
+    }
     // First make sure that the parameter server gets all *current* values
     updateParameterServerFromDevice(ssParams);
     // Initialize (and publish) initial configuration from compile-time generated header
     dynReconfServer = boost::make_shared<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>>();
     // Obtain and publish the default, min, and max values from the device to dyn_reconf
-    updateConfigFromDevice(ssParams);
+    updateDynamicReconfigureFromDevice(ssParams);
     // Callback for future changes requested from the ROS side
     dynReconfServer->setCallback(boost::bind(&StereoNodeBase::dynamicReconfigureCallback, this, _1, _2));
-    ROS_INFO("Published current configuration and dynamic_reconfigure limits");
 }
 
 /**
@@ -144,6 +157,7 @@ void StereoNodeBase::init() {
 }
 
 void StereoNodeBase::prepareAsyncTransfer() {
+    ROS_INFO("Connecting to %s:%s for data transfer", remoteHost.c_str(), remotePort.c_str());
     asyncTransfer.reset(new AsyncTransfer(remoteHost.c_str(), remotePort.c_str(),
         useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP));
 }
@@ -359,6 +373,111 @@ void StereoNodeBase::publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp)
     cloudPublisher->publish(pointCloudMsg);
 }
 
+template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::copyPointCloudIntensity(ImagePair& imagePair) {
+    // Get pointers to the beginnig and end of the point cloud
+    unsigned char* cloudStart = &pointCloudMsg->data[0];
+    unsigned char* cloudEnd = &pointCloudMsg->data[0]
+        + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
+
+    if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
+        // Get pointer to the current pixel and end of current row
+        unsigned char* imagePtr = imagePair.getPixelData(0);
+        unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
+        int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+
+        for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+            if(colorMode == RGB_SEPARATE) {// RGB as float
+                *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 255.0F;
+            } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                const unsigned char intensity = *imagePtr;
+                *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
+            } else {
+                *cloudPtr = *imagePtr;
+            }
+
+            imagePtr++;
+            if(imagePtr == rowEndPtr) {
+                // Progress to next row
+                imagePtr += rowIncrement;
+                rowEndPtr = imagePtr + imagePair.getWidth();
+            }
+        }
+    } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_12_BIT_MONO) {
+        // Get pointer to the current pixel and end of current row
+        unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
+        unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
+        int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
+
+        for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+
+            if(colorMode == RGB_SEPARATE) {// RGB as float
+                *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(*imagePtr) / 4095.0F;
+            } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                const unsigned char intensity = *imagePtr/16;
+                *reinterpret_cast<unsigned int*>(cloudPtr) = (intensity << 16) | (intensity << 8) | intensity;
+            } else {
+                *cloudPtr = *imagePtr/16;
+            }
+
+            imagePtr++;
+            if(imagePtr == rowEndPtr) {
+                // Progress to next row
+                imagePtr += rowIncrement;
+                rowEndPtr = imagePtr + imagePair.getWidth();
+            }
+        }
+    } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_RGB) {
+        // Get pointer to the current pixel and end of current row
+        unsigned char* imagePtr = imagePair.getPixelData(0);
+        unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
+        int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+
+        static bool warned = false;
+        if(colorMode == RGB_SEPARATE && !warned) {
+            warned = true;
+            ROS_WARN("RGBF32 is not supported for color images. Please use RGB8!");
+        }
+
+        for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
+                cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
+            if(colorMode == RGB_SEPARATE) {// RGB as float
+                *reinterpret_cast<float*>(cloudPtr) = static_cast<float>(imagePtr[2]) / 255.0F;
+            } else if(colorMode == RGB_COMBINED) {// RGB as integer
+                *reinterpret_cast<unsigned int*>(cloudPtr) = (imagePtr[0] << 16) | (imagePtr[1] << 8) | imagePtr[2];
+            } else {
+                *cloudPtr = (imagePtr[0] + imagePtr[1]*2 + imagePtr[2])/4;
+            }
+
+            imagePtr+=3;
+            if(imagePtr == rowEndPtr) {
+                // Progress to next row
+                imagePtr += rowIncrement;
+                rowEndPtr = imagePtr + imagePair.getWidth();
+            }
+        }
+    } else {
+        throw std::runtime_error("Invalid pixel format!");
+    }
+}
+
+template <int coord> void StereoNodeBase::copyPointCloudClamped(float* src, float* dst, int size) {
+    // Only copy points that are below the minimum depth
+    float* endPtr = src + 4*size;
+    for(float *srcPtr = src, *dstPtr = dst; srcPtr < endPtr; srcPtr+=4, dstPtr+=4) {
+        if(srcPtr[coord] > maxDepth) {
+            dstPtr[0] = std::numeric_limits<float>::quiet_NaN();
+            dstPtr[1] = std::numeric_limits<float>::quiet_NaN();
+            dstPtr[2] = std::numeric_limits<float>::quiet_NaN();
+        } else {
+            dstPtr[0] = srcPtr[0];
+            dstPtr[1] = srcPtr[1];
+            dstPtr[2] = srcPtr[2];
+        }
+    }
+}
+
 void StereoNodeBase::initPointCloud() {
     //ros::NodeHandle privateNh("~"); // RYT TODO check
 
@@ -500,6 +619,17 @@ void StereoNodeBase::publishCameraInfo(ros::Time stamp, const ImagePair& imagePa
 
         lastCamInfoPublish = stamp;
     }
+}
+
+template<class T> void StereoNodeBase::readCalibrationArray(const char* key, T& dest) {
+    std::vector<double> doubleVec;
+    calibStorage[key] >> doubleVec;
+
+    if(doubleVec.size() != dest.size()) {
+        std::runtime_error("Calibration file format error!");
+    }
+
+    std::copy(doubleVec.begin(), doubleVec.end(), dest.begin());
 }
 
 } // namespace
