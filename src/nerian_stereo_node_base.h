@@ -105,12 +105,12 @@ private:
     boost::scoped_ptr<ros::Publisher> cameraInfoPublisher;
 
     // ROS dynamic_reconfigure
-    boost::shared_ptr<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>> dynReconfServer;
+    boost::scoped_ptr<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>> dynReconfServer;
     nerian_stereo::NerianStereoConfig lastKnownConfig;
     bool initialConfigReceived;
     
     // Connection to parameter server on device
-    boost::shared_ptr<SceneScanParameters> sceneScanParameters;
+    boost::scoped_ptr<SceneScanParameters> sceneScanParameters;
 
     // Parameters
     bool useTcp;

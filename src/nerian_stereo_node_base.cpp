@@ -46,7 +46,7 @@ void StereoNodeBase::initDynamicReconfigure() {
     // Connect to parameter server on device
     ROS_INFO("Connecting to %s for parameter service", remoteHost.c_str());
     try {
-        sceneScanParameters = boost::make_shared<SceneScanParameters>(remoteHost.c_str());
+        sceneScanParameters.reset(new SceneScanParameters(remoteHost.c_str()));
     } catch(visiontransfer::ParameterException& e) {
         ROS_ERROR("ParameterException while connecting to parameter service: %s", e.what());
         throw;
@@ -63,7 +63,7 @@ void StereoNodeBase::initDynamicReconfigure() {
     // First make sure that the parameter server gets all *current* values
     updateParameterServerFromDevice(ssParams);
     // Initialize (and publish) initial configuration from compile-time generated header
-    dynReconfServer = boost::make_shared<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>>();
+    dynReconfServer.reset(new dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>());
     // Obtain and publish the default, min, and max values from the device to dyn_reconf
     updateDynamicReconfigureFromDevice(ssParams);
     // Callback for future changes requested from the ROS side
