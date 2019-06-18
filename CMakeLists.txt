@@ -5,7 +5,7 @@ project(nerian_stereo)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs cv_bridge
-    message_generation)
+    message_generation dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
 find_package(OpenCV REQUIRED)
@@ -20,6 +20,25 @@ add_message_files(FILES StereoCameraInfo.msg)
 
 # Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES sensor_msgs)
+
+# Generate config server C++ headers from the cfg file
+generate_dynamic_reconfigure_options(cfg/NerianStereo.cfg)
+include_directories(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/cfg/cpp)
+
+# Generate our own run-time parameter update code (from the same cfg file)
+message(STATUS "Generate parameter server / dynamic_reconfigure code ...")
+execute_process(COMMAND "python" "${CMAKE_CURRENT_LIST_DIR}/cfg/generate_nerian_config_cpp.py"
+                "cfg/NerianStereo.cfg"
+                "src/autogen_nerian_stereo_dynamic_reconfigure.cpp"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/"
+                RESULT_VARIABLE autogen_result
+                OUTPUT_VARIABLE autogen_output
+                ERROR_VARIABLE  autogen_output)
+if(autogen_result)
+    message(STATUS "Output of failing script:\n${autogen_output}")
+    message(SEND_ERROR "Failure in code generation script")
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -90,12 +109,16 @@ if(BUILD_VT)
     )
 
     link_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer/lib)
+    
+    set(COLORCODER_SOURCE_FILE ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/nvcom/helpers/colorcoder.cpp)
 
 else()
 
     # Development settings: Use local libvisiontransfer
     link_directories($ENV{VISION_TRANSFER_LIB})
     include_directories($ENV{VISION_TRANSFER_INCLUDE})
+    set(COLORCODER_SOURCE_FILE $ENV{VISION_TRANSFER_INCLUDE}/../libnvshared/nvshared/imageproc/colorcoder.cpp)
+    include_directories($ENV{VISION_TRANSFER_INCLUDE}/../libnvshared/nvshared/imageproc)
 endif()
 
 ###########
@@ -122,18 +145,35 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERS
 
 # Declare a C++ executable
 add_executable(nerian_stereo_node
+    src/nerian_stereo_node_base.cpp
     src/nerian_stereo_node.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/nvcom/helpers/colorcoder.cpp
+    src/autogen_nerian_stereo_dynamic_reconfigure.cpp
+    ${COLORCODER_SOURCE_FILE}
 )
 
 # Add cmake target dependencies of the executable
 # same as for the library above
 add_dependencies(nerian_stereo_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-    nerian_stereo_visiontransfer_stub)
+    nerian_stereo_visiontransfer_stub ${PROJECT_NAME}_gencfg)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
   ${OpenCV_LIBS} visiontransfer)
+
+# Do the same things for the nodelet (library) version, too
+add_library(nerian_stereo_nodelet
+    src/nerian_stereo_node_base.cpp
+    src/nerian_stereo_nodelet.cpp
+    src/autogen_nerian_stereo_dynamic_reconfigure.cpp
+    ${COLORCODER_SOURCE_FILE}
+)
+
+add_dependencies(nerian_stereo_nodelet ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+    nerian_stereo_visiontransfer_stub ${PROJECT_NAME}_gencfg)
+
+target_link_libraries(nerian_stereo_nodelet ${catkin_LIBRARIES} ${Boost_LIBRARIES}
+  ${OpenCV_LIBS} visiontransfer)
+
 
 #############
 ## Install ##
@@ -143,7 +183,7 @@ target_link_libraries(nerian_stereo_node ${catkin_LIBRARIES} ${Boost_LIBRARIES}
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 # Mark executables and/or libraries for installation
-install(TARGETS nerian_stereo_node
+install(TARGETS nerian_stereo_node nerian_stereo_nodelet
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -151,9 +191,6 @@ install(TARGETS nerian_stereo_node
 
 # Install scripts
 install(FILES
-    scripts/config_device_passthru.sh
-    scripts/config_device_rectify.sh
-    scripts/config_device_stereo.sh
     scripts/download_calibration.sh
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
     PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
@@ -164,6 +201,8 @@ install(FILES data/calib.yaml
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/data
 )
 
-install(FILES launch/nerian_stereo.launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+install(FILES
+    launch/nerian_stereo.launch
+    launch/nerian_stereo_nodelet.launch
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )

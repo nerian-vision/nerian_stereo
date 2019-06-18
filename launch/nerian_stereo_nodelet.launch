@@ -5,19 +5,14 @@
     <!-- Configure the destination where the calibration will saved -->
     <arg name="calib_file" default="/tmp/nerian_calib.yaml" />
 
-    <!-- Configure the name of the ROS node -->
-    <arg name="node_name" default="nerian_stereo_node" />
+    <!-- Configure the name of the ROS nodelet -->
+    <arg name="node_name" default="nerian_stereo_nodelet" />
 
     <!-- Download the current camera calibration -->
     <node pkg="nerian_stereo" type="download_calibration.sh" args="$(arg device_address) $(arg calib_file)" name="download_calib" output="screen" />
 
-    <!-- For debugging it is possible to configure a launch prefix -->
-    <!-- <arg name="launchPrefix" value="gdb -ex 'catch throw' -ex run \-\-args" /> -->
-    <!-- <arg name="launchPrefix" value="valgrind" /> -->
-    <arg name="launchPrefix" value="" />
-
-    <!-- Launch the stereo node -->
-    <node pkg="nerian_stereo" type="nerian_stereo_node" name="$(arg node_name)" output="screen" launch-prefix="$(arg launchPrefix)">
+    <node pkg="nodelet" type="nodelet" name="standalone_nodelet" args="manager" output="screen"/>
+    <node pkg="nodelet" type="nodelet" name="StereoNodelet" args="load nerian_stereo/StereoNodelet standalone_nodelet" output="screen">
         <!-- possible values: none, mono8, rgb8, rgb32f -->
         <param name="point_cloud_intensity_channel" type="string" value="mono8" />
 
@@ -36,7 +31,8 @@
         <param name="calibration_file" type="string" value="$(arg calib_file)"/>
         <param name="frame" type="string" value="map" />
 
-        <param name="delay_execution" type="double" value="2" />
+        <param name="delay_execution" type="double" value="0" />
         <param name="max_depth" type="double" value="-1" />
     </node>
 </launch>
+
