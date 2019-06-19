@@ -368,6 +368,8 @@ void StereoNodeBase::publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp)
         case RGB_SEPARATE:
             copyPointCloudIntensity<RGB_SEPARATE>(imagePair);
             break;
+        case NONE:
+            break;
     }
 
     cloudPublisher->publish(pointCloudMsg);

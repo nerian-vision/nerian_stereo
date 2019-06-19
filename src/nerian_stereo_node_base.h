@@ -60,7 +60,7 @@ namespace nerian_stereo {
 
 class StereoNodeBase {
 public:
-    StereoNodeBase(): frameNum(0), initialConfigReceived(false) {
+    StereoNodeBase(): initialConfigReceived(false), frameNum(0) {
     }
 
     ~StereoNodeBase() {

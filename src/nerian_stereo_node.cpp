@@ -34,7 +34,9 @@ public:
             }
         } catch(const std::exception& ex) {
             ROS_FATAL("Exception occured: %s", ex.what());
+            return 1;
         }
+        return 0;
     }
 private:
     // The standalone node has its own private node handles
