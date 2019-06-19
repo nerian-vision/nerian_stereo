@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.4.0 (2019-06-19)
+------------------
 * Updated to latest Nerian software release 6.5.0
 * New nodelet version of ROS module
 * Support for dynamic_reconfigure
