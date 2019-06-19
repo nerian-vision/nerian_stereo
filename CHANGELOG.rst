@@ -2,6 +2,13 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated to latest Nerian software release 6.5.0
+* New nodelet version of ROS module
+* Support for dynamic_reconfigure
+* Corrected marking of point clouds as not dense
+
 3.3.2 (2019-02-15)
 ------------------
 * Fixed installation permissions
