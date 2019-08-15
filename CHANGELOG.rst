@@ -2,6 +2,11 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated to libvisiontransfer 7.0.0
+* Contributors: Konstantin Schauwecker
+
 3.4.0 (2019-06-19)
 ------------------
 * Updated to latest Nerian software release 6.5.0
