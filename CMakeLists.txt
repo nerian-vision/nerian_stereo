@@ -95,10 +95,11 @@ if(BUILD_VT)
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/nerian-vision-software-${VT_VERSION}-src.tar.xz
         COMMAND ${CMAKE_COMMAND} . -DCMAKE_CXX_FLAGS=${VT_CXX_FLAGS} -DDISABLE_NATIVE=1 -DDISABLE_PCL=1 -DDISABLE_OPENCV=1
         COMMAND make
+        COMMAND cp lib/libvisiontransfer.so ${CATKIN_DEVEL_PREFIX}/lib/
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer
     )
 
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer/lib/libvisiontransfer.so
+    install(FILES ${CATKIN_DEVEL_PREFIX}/lib/libvisiontransfer.so
         DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     )
 
@@ -109,7 +110,7 @@ if(BUILD_VT)
     )
 
     link_directories(${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/libvisiontransfer/lib)
-    
+
     set(COLORCODER_SOURCE_FILE ${CMAKE_CURRENT_BINARY_DIR}/nerian-vision-software-${VT_VERSION}-src/nvcom/helpers/colorcoder.cpp)
 
 else()
@@ -133,7 +134,7 @@ if(COMPILER_SUPPORTS_CXX11)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 elseif(COMPILER_SUPPORTS_CXX0X)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-else()
+else()	
     message(WARNING "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
