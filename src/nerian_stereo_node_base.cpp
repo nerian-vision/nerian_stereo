@@ -245,15 +245,38 @@ void StereoNodeBase::publishImageMsg(const ImagePair& imagePair, int imageIndex,
     cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
 
     bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT_MONO);
-    cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
-        format12Bit ? CV_16UC1 : CV_8UC1,
-        imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
     string encoding = "";
+    bool ok = true;
 
     if(colorCodeDispMap == "" || colorCodeDispMap == "none" || !allowColorCode || !format12Bit) {
-        cvImg.image = monoImg;
-        encoding = (format12Bit ? "mono16": "mono8");
+        switch (imagePair.getPixelFormat(imageIndex)) {
+            case ImagePair::FORMAT_8_BIT_RGB: {
+                cv::Mat rgbImg(imagePair.getHeight(), imagePair.getWidth(),
+                    CV_8UC3,
+                    imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+                cvImg.image = rgbImg;
+                encoding = "rgb8";
+                break;
+            }
+            case ImagePair::FORMAT_8_BIT_MONO:
+            case ImagePair::FORMAT_12_BIT_MONO: {
+                cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
+                    format12Bit ? CV_16UC1 : CV_8UC1,
+                    imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+                cvImg.image = monoImg;
+                encoding = (format12Bit ? "mono16": "mono8");
+                break;
+            }
+            default: {
+                ROS_WARN("Omitting an image with unhandled pixel format");
+                ok = false;
+            }
+        }
     } else {
+        cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
+            format12Bit ? CV_16UC1 : CV_8UC1,
+            imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+
         if(colCoder == NULL) {
             int dispMin = 0, dispMax = 0;
             imagePair.getDisparityRange(dispMin, dispMax);
@@ -276,9 +299,11 @@ void StereoNodeBase::publishImageMsg(const ImagePair& imagePair, int imageIndex,
         encoding = "bgr8";
     }
 
-    sensor_msgs::ImagePtr msg = cvImg.toImageMsg();
-    msg->encoding = encoding;
-    publisher->publish(msg);
+    if (ok) {
+        sensor_msgs::ImagePtr msg = cvImg.toImageMsg();
+        msg->encoding = encoding;
+        publisher->publish(msg);
+    }
 }
 
 void StereoNodeBase::qMatrixToRosCoords(const float* src, float* dst) {
