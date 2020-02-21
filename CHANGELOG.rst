@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.7.0 (2020-02-21)
+------------------
 * Added new trigger configuration parameters
 * Updated to vision software release 7.2
 * Contributors: Konstantin Schauwecker
