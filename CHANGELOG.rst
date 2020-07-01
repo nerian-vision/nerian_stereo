@@ -2,6 +2,19 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.7.0 (2020-02-21)
+------------------
+* Added new trigger configuration parameters
+* Updated to vision software release 7.2
+* Contributors: Konstantin Schauwecker
+
+3.6.0 (2019-12-05)
+------------------
+* Updated Nerian software release to version 7.1.0
+* Correct pixel format for publication of RGB camera images
+* Fixed problem with LD_LIBRARY_PATH when running from catkin workspace
+* Contributors: Konstantin Schauwecker, Ramin Yaghoubzadeh Torky
+
 3.5.0 (2019-08-15)
 ------------------
 * Updated to libvisiontransfer 7.0.0
