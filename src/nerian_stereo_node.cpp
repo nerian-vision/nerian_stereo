@@ -29,8 +29,8 @@ public:
             while(ros::ok()) {
                 // Dispatch any queued ROS callbacks
                 ros::spinOnce();
-                // Get a single image pair and process it
-                processOneImagePair();
+                // Get a single image set and process it
+                processOneImageSet();
             }
         } catch(const std::exception& ex) {
             ROS_FATAL("Exception occured: %s", ex.what());

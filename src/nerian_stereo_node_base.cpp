@@ -162,10 +162,10 @@ void StereoNodeBase::prepareAsyncTransfer() {
         useTcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP));
 }
 
-void StereoNodeBase::processOneImagePair() {
+void StereoNodeBase::processOneImageSet() {
     // Receive image data
-    ImagePair imagePair;
-    if(!asyncTransfer->collectReceivedImagePair(imagePair, 0.5)) {
+    ImageSet imageSet;
+    if(!asyncTransfer->collectReceivedImageSet(imageSet, 0.5)) {
         return;
     }
 
@@ -175,16 +175,19 @@ void StereoNodeBase::processOneImagePair() {
         stamp = ros::Time::now();
     } else {
         int secs = 0, microsecs = 0;
-        imagePair.getTimestamp(secs, microsecs);
+        imageSet.getTimestamp(secs, microsecs);
         stamp = ros::Time(secs, microsecs*1000);
     }
 
-    // Publish image data messages
-    publishImageMsg(imagePair, 0, stamp, false, leftImagePublisher.get());
-    if(imagePair.isImageDisparityPair()) {
-        publishImageMsg(imagePair, 1, stamp, true, disparityPublisher.get());
-    } else {
-        publishImageMsg(imagePair, 1, stamp, false, rightImagePublisher.get());
+    // Publish image data messages for all images included in the set
+    if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
+        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_LEFT), stamp, false, leftImagePublisher.get());
+    }
+    if (imageSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_DISPARITY), stamp, true, disparityPublisher.get());
+    }
+    if (imageSet.hasImageType(ImageSet::IMAGE_RIGHT)) {
+        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_RIGHT), stamp, false, rightImagePublisher.get());
     }
 
     if(cloudPublisher->getNumSubscribers() > 0) {
@@ -193,11 +196,11 @@ void StereoNodeBase::processOneImagePair() {
             initPointCloud();
         }
 
-        publishPointCloudMsg(imagePair, stamp);
+        publishPointCloudMsg(imageSet, stamp);
     }
 
     if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
-        publishCameraInfo(stamp, imagePair);
+        publishCameraInfo(stamp, imageSet);
     }
 
     // Display some simple statistics
@@ -232,7 +235,7 @@ void StereoNodeBase::loadCameraCalibration() {
     }
 }
 
-void StereoNodeBase::publishImageMsg(const ImagePair& imagePair, int imageIndex, ros::Time stamp, bool allowColorCode,
+void StereoNodeBase::publishImageMsg(const ImageSet& imageSet, int imageIndex, ros::Time stamp, bool allowColorCode,
         ros::Publisher* publisher) {
 
     if(publisher->getNumSubscribers() <= 0) {
@@ -242,27 +245,27 @@ void StereoNodeBase::publishImageMsg(const ImagePair& imagePair, int imageIndex,
     cv_bridge::CvImage cvImg;
     cvImg.header.frame_id = frame;
     cvImg.header.stamp = stamp;
-    cvImg.header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
+    cvImg.header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
-    bool format12Bit = (imagePair.getPixelFormat(imageIndex) == ImagePair::FORMAT_12_BIT_MONO);
+    bool format12Bit = (imageSet.getPixelFormat(imageIndex) == ImageSet::FORMAT_12_BIT_MONO);
     string encoding = "";
     bool ok = true;
 
     if(colorCodeDispMap == "" || colorCodeDispMap == "none" || !allowColorCode || !format12Bit) {
-        switch (imagePair.getPixelFormat(imageIndex)) {
-            case ImagePair::FORMAT_8_BIT_RGB: {
-                cv::Mat rgbImg(imagePair.getHeight(), imagePair.getWidth(),
+        switch (imageSet.getPixelFormat(imageIndex)) {
+            case ImageSet::FORMAT_8_BIT_RGB: {
+                cv::Mat rgbImg(imageSet.getHeight(), imageSet.getWidth(),
                     CV_8UC3,
-                    imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+                    imageSet.getPixelData(imageIndex), imageSet.getRowStride(imageIndex));
                 cvImg.image = rgbImg;
                 encoding = "rgb8";
                 break;
             }
-            case ImagePair::FORMAT_8_BIT_MONO:
-            case ImagePair::FORMAT_12_BIT_MONO: {
-                cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
+            case ImageSet::FORMAT_8_BIT_MONO:
+            case ImageSet::FORMAT_12_BIT_MONO: {
+                cv::Mat monoImg(imageSet.getHeight(), imageSet.getWidth(),
                     format12Bit ? CV_16UC1 : CV_8UC1,
-                    imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+                    imageSet.getPixelData(imageIndex), imageSet.getRowStride(imageIndex));
                 cvImg.image = monoImg;
                 encoding = (format12Bit ? "mono16": "mono8");
                 break;
@@ -273,13 +276,13 @@ void StereoNodeBase::publishImageMsg(const ImagePair& imagePair, int imageIndex,
             }
         }
     } else {
-        cv::Mat monoImg(imagePair.getHeight(), imagePair.getWidth(),
+        cv::Mat monoImg(imageSet.getHeight(), imageSet.getWidth(),
             format12Bit ? CV_16UC1 : CV_8UC1,
-            imagePair.getPixelData(imageIndex), imagePair.getRowStride(imageIndex));
+            imageSet.getPixelData(imageIndex), imageSet.getRowStride(imageIndex));
 
         if(colCoder == NULL) {
             int dispMin = 0, dispMax = 0;
-            imagePair.getDisparityRange(dispMin, dispMax);
+            imageSet.getDisparityRange(dispMin, dispMax);
 
             colCoder.reset(new ColorCoder(
                 colorCodeDispMap == "rainbow" ? ColorCoder::COLOR_RAINBOW_BGR : ColorCoder::COLOR_RED_BLUE_BGR,
@@ -320,8 +323,9 @@ void StereoNodeBase::qMatrixToRosCoords(const float* src, float* dst) {
     dst[14] = src[14]; dst[15] = src[15];
 }
 
-void StereoNodeBase::publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp) {
-    if(imagePair.getPixelFormat(1) != ImagePair::FORMAT_12_BIT_MONO) {
+void StereoNodeBase::publishPointCloudMsg(ImageSet& imageSet, ros::Time stamp) {
+    if ((!imageSet.hasImageType(ImageSet::IMAGE_DISPARITY))
+        || (imageSet.getPixelFormat(ImageSet::IMAGE_DISPARITY) != ImageSet::FORMAT_12_BIT_MONO)) {
         return; // This is not a disparity map
     }
 
@@ -329,20 +333,20 @@ void StereoNodeBase::publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp)
     if(useQFromCalibFile) {
         static std::vector<float> q;
         calibStorage["Q"] >> q;
-        imagePair.setQMatrix(&q[0]);
+        imageSet.setQMatrix(&q[0]);
     }
 
     // Transform Q-matrix if desired
     float qRos[16];
     if(rosCoordinateSystem) {
-        qMatrixToRosCoords(imagePair.getQMatrix(), qRos);
-        imagePair.setQMatrix(qRos);
+        qMatrixToRosCoords(imageSet.getQMatrix(), qRos);
+        imageSet.setQMatrix(qRos);
     }
 
     // Get 3D points
     float* pointMap = nullptr;
     try {
-        pointMap = recon3d->createPointMap(imagePair, 0);
+        pointMap = recon3d->createPointMap(imageSet, 0);
     } catch(std::exception& ex) {
         cerr << "Error creating point cloud: " << ex.what() << endl;
         return;
@@ -351,66 +355,68 @@ void StereoNodeBase::publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp)
     // Create message object and set header
     pointCloudMsg->header.stamp = stamp;
     pointCloudMsg->header.frame_id = frame;
-    pointCloudMsg->header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
+    pointCloudMsg->header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
     // Copy 3D points
-    if(pointCloudMsg->data.size() != imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float)) {
+    if(pointCloudMsg->data.size() != imageSet.getWidth()*imageSet.getHeight()*4*sizeof(float)) {
         // Allocate buffer
-        pointCloudMsg->data.resize(imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float));
+        pointCloudMsg->data.resize(imageSet.getWidth()*imageSet.getHeight()*4*sizeof(float));
 
         // Set basic data
-        pointCloudMsg->width = imagePair.getWidth();
-        pointCloudMsg->height = imagePair.getHeight();
+        pointCloudMsg->width = imageSet.getWidth();
+        pointCloudMsg->height = imageSet.getHeight();
         pointCloudMsg->is_bigendian = false;
         pointCloudMsg->point_step = 4*sizeof(float);
-        pointCloudMsg->row_step = imagePair.getWidth() * pointCloudMsg->point_step;
+        pointCloudMsg->row_step = imageSet.getWidth() * pointCloudMsg->point_step;
         pointCloudMsg->is_dense = false;
     }
 
     if(maxDepth < 0) {
         // Just copy everything
         memcpy(&pointCloudMsg->data[0], pointMap,
-            imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float));
+            imageSet.getWidth()*imageSet.getHeight()*4*sizeof(float));
     } else {
         // Only copy points up to maximum depth
         if(rosCoordinateSystem) {
             copyPointCloudClamped<0>(pointMap, reinterpret_cast<float*>(&pointCloudMsg->data[0]),
-                imagePair.getWidth()*imagePair.getHeight());
+                imageSet.getWidth()*imageSet.getHeight());
         } else {
             copyPointCloudClamped<2>(pointMap, reinterpret_cast<float*>(&pointCloudMsg->data[0]),
-                imagePair.getWidth()*imagePair.getHeight());
+                imageSet.getWidth()*imageSet.getHeight());
         }
     }
 
-    // Copy intensity values
-    switch(pointCloudColorMode) {
-        case INTENSITY:
-            copyPointCloudIntensity<INTENSITY>(imagePair);
-            break;
-        case RGB_COMBINED:
-            copyPointCloudIntensity<RGB_COMBINED>(imagePair);
-            break;
-        case RGB_SEPARATE:
-            copyPointCloudIntensity<RGB_SEPARATE>(imagePair);
-            break;
-        case NONE:
-            break;
+    if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
+        // Copy intensity values as well (if we received any image data)
+        switch(pointCloudColorMode) {
+            case INTENSITY:
+                copyPointCloudIntensity<INTENSITY>(imageSet);
+                break;
+            case RGB_COMBINED:
+                copyPointCloudIntensity<RGB_COMBINED>(imageSet);
+                break;
+            case RGB_SEPARATE:
+                copyPointCloudIntensity<RGB_SEPARATE>(imageSet);
+                break;
+            case NONE:
+                break;
+        }
     }
 
     cloudPublisher->publish(pointCloudMsg);
 }
 
-template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::copyPointCloudIntensity(ImagePair& imagePair) {
-    // Get pointers to the beginnig and end of the point cloud
+template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::copyPointCloudIntensity(ImageSet& imageSet) {
+    // Get pointers to the beginning and end of the point cloud
     unsigned char* cloudStart = &pointCloudMsg->data[0];
     unsigned char* cloudEnd = &pointCloudMsg->data[0]
-        + imagePair.getWidth()*imagePair.getHeight()*4*sizeof(float);
+        + imageSet.getWidth()*imageSet.getHeight()*4*sizeof(float);
 
-    if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_MONO) {
+    if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_8_BIT_MONO) {
         // Get pointer to the current pixel and end of current row
-        unsigned char* imagePtr = imagePair.getPixelData(0);
-        unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-        int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+        unsigned char* imagePtr = imageSet.getPixelData(ImageSet::IMAGE_LEFT);
+        unsigned char* rowEndPtr = imagePtr + imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - imageSet.getWidth();
 
         for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                 cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
@@ -427,14 +433,14 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
             if(imagePtr == rowEndPtr) {
                 // Progress to next row
                 imagePtr += rowIncrement;
-                rowEndPtr = imagePtr + imagePair.getWidth();
+                rowEndPtr = imagePtr + imageSet.getWidth();
             }
         }
-    } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_12_BIT_MONO) {
+    } else if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_12_BIT_MONO) {
         // Get pointer to the current pixel and end of current row
-        unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imagePair.getPixelData(0));
-        unsigned short* rowEndPtr = imagePtr + imagePair.getWidth();
-        int rowIncrement = imagePair.getRowStride(0) - 2*imagePair.getWidth();
+        unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imageSet.getPixelData(ImageSet::IMAGE_LEFT));
+        unsigned short* rowEndPtr = imagePtr + imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - 2*imageSet.getWidth();
 
         for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                 cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
@@ -452,14 +458,14 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
             if(imagePtr == rowEndPtr) {
                 // Progress to next row
                 imagePtr += rowIncrement;
-                rowEndPtr = imagePtr + imagePair.getWidth();
+                rowEndPtr = imagePtr + imageSet.getWidth();
             }
         }
-    } else if(imagePair.getPixelFormat(0) == ImagePair::FORMAT_8_BIT_RGB) {
+    } else if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_8_BIT_RGB) {
         // Get pointer to the current pixel and end of current row
-        unsigned char* imagePtr = imagePair.getPixelData(0);
-        unsigned char* rowEndPtr = imagePtr + imagePair.getWidth();
-        int rowIncrement = imagePair.getRowStride(0) - imagePair.getWidth();
+        unsigned char* imagePtr = imageSet.getPixelData(ImageSet::IMAGE_LEFT);
+        unsigned char* rowEndPtr = imagePtr + imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - imageSet.getWidth();
 
         static bool warned = false;
         if(colorMode == RGB_SEPARATE && !warned) {
@@ -481,7 +487,7 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
             if(imagePtr == rowEndPtr) {
                 // Progress to next row
                 imagePtr += rowIncrement;
-                rowEndPtr = imagePtr + imagePair.getWidth();
+                rowEndPtr = imagePtr + imageSet.getWidth();
             }
         }
     } else {
@@ -575,13 +581,13 @@ void StereoNodeBase::initPointCloud() {
     }
 }
 
-void StereoNodeBase::publishCameraInfo(ros::Time stamp, const ImagePair& imagePair) {
+void StereoNodeBase::publishCameraInfo(ros::Time stamp, const ImageSet& imageSet) {
     if(camInfoMsg == NULL) {
         // Initialize the camera info structure
         camInfoMsg.reset(new nerian_stereo::StereoCameraInfo);
 
         camInfoMsg->header.frame_id = frame;
-        camInfoMsg->header.seq = imagePair.getSequenceNumber(); // Actually ROS will overwrite this
+        camInfoMsg->header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
         if(calibFile != "") {
             std::vector<int> sizeVec;
@@ -631,7 +637,7 @@ void StereoNodeBase::publishCameraInfo(ros::Time stamp, const ImagePair& imagePa
     double dt = (stamp - lastCamInfoPublish).toSec();
     if(dt > 1.0) {
         // Rather use the Q-matrix that we received over the network if it is valid
-        const float* qMatrix = imagePair.getQMatrix();
+        const float* qMatrix = imageSet.getQMatrix();
         if(qMatrix[0] != 0.0) {
             for(int i=0; i<16; i++) {
                 camInfoMsg->Q[i] = static_cast<double>(qMatrix[i]);

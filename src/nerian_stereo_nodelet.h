@@ -20,7 +20,7 @@ namespace nerian_stereo {
 class StereoNodelet: public StereoNodeBase, public nodelet::Nodelet {
 public:
     /**
-     * \brief Callback for the ros::Timer that replaces a processing loop in Nodelets; wraps processOneImagePair()
+     * \brief Callback for the ros::Timer that replaces a processing loop in Nodelets; wraps processOneImageSet()
      */
     void stereoIteration(const ros::TimerEvent&);
     /**
