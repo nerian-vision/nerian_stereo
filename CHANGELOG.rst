@@ -2,6 +2,13 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated to nerian software release version 8.1.0
+* Support for Support for 1 to 3 images in result set
+* Added new device configuration variables
+* Contributors: Konstantin Schauwecker, Ramin Yaghoubzadeh Torky
+
 3.7.0 (2020-02-21)
 ------------------
 * Added new trigger configuration parameters
