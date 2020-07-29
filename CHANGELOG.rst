@@ -5,7 +5,7 @@ Changelog for package nerian_stereo
 3.8.0 (2020-07-29)
 ------------------
 * Updated to nerian software release version 8.1.0
-* Support for Support for 1 to 3 images in result set
+* Support for 1 to 3 images in result set
 * Added new device configuration variables
 * Contributors: Konstantin Schauwecker, Ramin Yaghoubzadeh Torky
 
