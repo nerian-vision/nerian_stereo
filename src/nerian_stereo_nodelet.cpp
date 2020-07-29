@@ -18,7 +18,7 @@
 namespace nerian_stereo {
 
 void StereoNodelet::stereoIteration(const ros::TimerEvent&) {
-    processOneImagePair();
+    processOneImageSet();
 }
 
 void StereoNodelet::onInit() {

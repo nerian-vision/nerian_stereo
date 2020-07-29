@@ -77,14 +77,14 @@ public:
     void initDynamicReconfigure();
 
     /**
-     * \brief Connects to the image service to request the stream of image pairs
+     * \brief Connects to the image service to request the stream of image sets
      */
     void prepareAsyncTransfer();
 
     /*
-     * \brief Collect and process a single image pair (or return after timeout if none are available)
+     * \brief Collect and process a single image set (or return after timeout if none are available)
      */
-    void processOneImagePair();
+    void processOneImageSet();
 
 private:
     enum PointCloudColorMode {
@@ -150,7 +150,7 @@ private:
      * \brief Publishes the disparity map as 16-bit grayscale image or color coded
      * RGB image
      */
-    void publishImageMsg(const ImagePair& imagePair, int imageIndex, ros::Time stamp, bool allowColorCode,
+    void publishImageMsg(const ImageSet& imageSet, int imageIndex, ros::Time stamp, bool allowColorCode,
             ros::Publisher* publisher);
 
     /**
@@ -163,12 +163,12 @@ private:
      * \brief Reconstructs the 3D locations form the disparity map and publishes them
      * as point cloud.
      */
-    void publishPointCloudMsg(ImagePair& imagePair, ros::Time stamp);
+    void publishPointCloudMsg(ImageSet& imageSet, ros::Time stamp);
 
     /**
      * \brief Copies the intensity or RGB data to the point cloud
      */
-    template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImagePair& imagePair);
+    template <PointCloudColorMode colorMode> void copyPointCloudIntensity(ImageSet& imageSet);
 
     /**
      * \brief Copies all points in a point cloud that have a depth smaller
@@ -185,7 +185,7 @@ private:
     /**
      * \brief Publishes the camera info once per second
      */
-    void publishCameraInfo(ros::Time stamp, const ImagePair& imagePair);
+    void publishCameraInfo(ros::Time stamp, const ImageSet& imageSet);
 
     /**
      * \brief Reads a vector from the calibration file to a boost:array
