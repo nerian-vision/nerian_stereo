@@ -2,6 +2,11 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Build fix for Ubuntu 20.04
+* Contributors: Konstantin Schauwecker
+
 3.8.0 (2020-07-29)
 ------------------
 * Updated to nerian software release version 8.1.0
