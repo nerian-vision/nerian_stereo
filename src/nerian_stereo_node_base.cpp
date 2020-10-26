@@ -101,6 +101,10 @@ void StereoNodeBase::init() {
         frame = "world";
     }
 
+    if (!privateNh.getParam("internal_frame", internalFrame)) {
+        internalFrame = "nerian_stereo";
+    }
+
     if (!privateNh.getParam("remote_port", remotePort)) {
         remotePort = "7681";
     }
@@ -154,6 +158,23 @@ void StereoNodeBase::init() {
         "/nerian_stereo/stereo_camera_info", 1)));
     cloudPublisher.reset(new ros::Publisher(getNH().advertise<sensor_msgs::PointCloud2>(
         "/nerian_stereo/point_cloud", 5)));
+
+    transformBroadcaster.reset(new tf2_ros::TransformBroadcaster());
+    currentTransform.header.stamp = ros::Time::now();
+    currentTransform.header.frame_id = frame;
+    currentTransform.child_frame_id = internalFrame;
+    currentTransform.transform.translation.x = 0.0;
+    currentTransform.transform.translation.y = 0.0;
+    currentTransform.transform.translation.z = 0.0;
+    currentTransform.transform.rotation.x = 0.0;
+    currentTransform.transform.rotation.y = 0.0;
+    currentTransform.transform.rotation.z = 0.0;
+    currentTransform.transform.rotation.w = 1.0;
+
+}
+
+void StereoNodeBase::initDataChannelService() {
+    dataChannelService.reset(new DataChannelService(remoteHost.c_str()));
 }
 
 void StereoNodeBase::prepareAsyncTransfer() {
@@ -165,54 +186,53 @@ void StereoNodeBase::prepareAsyncTransfer() {
 void StereoNodeBase::processOneImageSet() {
     // Receive image data
     ImageSet imageSet;
-    if(!asyncTransfer->collectReceivedImageSet(imageSet, 0.5)) {
-        return;
-    }
+    if(asyncTransfer->collectReceivedImageSet(imageSet, 0.0)) {
 
-    // Get time stamp
-    ros::Time stamp;
-    if(rosTimestamps) {
-        stamp = ros::Time::now();
-    } else {
-        int secs = 0, microsecs = 0;
-        imageSet.getTimestamp(secs, microsecs);
-        stamp = ros::Time(secs, microsecs*1000);
-    }
-
-    // Publish image data messages for all images included in the set
-    if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
-        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_LEFT), stamp, false, leftImagePublisher.get());
-    }
-    if (imageSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
-        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_DISPARITY), stamp, true, disparityPublisher.get());
-    }
-    if (imageSet.hasImageType(ImageSet::IMAGE_RIGHT)) {
-        publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_RIGHT), stamp, false, rightImagePublisher.get());
-    }
-
-    if(cloudPublisher->getNumSubscribers() > 0) {
-        if(recon3d == nullptr) {
-            // First initialize
-            initPointCloud();
+        // Get time stamp
+        ros::Time stamp;
+        if(rosTimestamps) {
+            stamp = ros::Time::now();
+        } else {
+            int secs = 0, microsecs = 0;
+            imageSet.getTimestamp(secs, microsecs);
+            stamp = ros::Time(secs, microsecs*1000);
         }
 
-        publishPointCloudMsg(imageSet, stamp);
-    }
-
-    if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
-        publishCameraInfo(stamp, imageSet);
-    }
-
-    // Display some simple statistics
-    frameNum++;
-    if(stamp.sec != lastLogTime.sec) {
-        if(lastLogTime != ros::Time()) {
-            double dt = (stamp - lastLogTime).toSec();
-            double fps = (frameNum - lastLogFrames) / dt;
-            ROS_INFO("%.1f fps", fps);
+        // Publish image data messages for all images included in the set
+        if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
+            publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_LEFT), stamp, false, leftImagePublisher.get());
         }
-        lastLogFrames = frameNum;
-        lastLogTime = stamp;
+        if (imageSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+            publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_DISPARITY), stamp, true, disparityPublisher.get());
+        }
+        if (imageSet.hasImageType(ImageSet::IMAGE_RIGHT)) {
+            publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_RIGHT), stamp, false, rightImagePublisher.get());
+        }
+
+        if(cloudPublisher->getNumSubscribers() > 0) {
+            if(recon3d == nullptr) {
+                // First initialize
+                initPointCloud();
+            }
+
+            publishPointCloudMsg(imageSet, stamp);
+        }
+
+        if(cameraInfoPublisher != NULL && cameraInfoPublisher->getNumSubscribers() > 0) {
+            publishCameraInfo(stamp, imageSet);
+        }
+
+        // Display some simple statistics
+        frameNum++;
+        if(stamp.sec != lastLogTime.sec) {
+            if(lastLogTime != ros::Time()) {
+                double dt = (stamp - lastLogTime).toSec();
+                double fps = (frameNum - lastLogFrames) / dt;
+                ROS_INFO("%.1f fps", fps);
+            }
+            lastLogFrames = frameNum;
+            lastLogTime = stamp;
+        }
     }
 }
 
@@ -663,6 +683,54 @@ template<class T> void StereoNodeBase::readCalibrationArray(const char* key, T& 
     }
 
     std::copy(doubleVec.begin(), doubleVec.end(), dest.begin());
+}
+
+void StereoNodeBase::processDataChannels() {
+    if (dataChannelService->imuAvailable()) {
+        // Try to pop the whole accumulated time series since the last poll
+        std::vector<TimestampedQuaternion> qs = dataChannelService->imuGetRotationQuaternionSeries();
+        // For now, we update the current orientation with the
+        //  latest one reported by the IMU of a device
+        if (qs.size()>0) {
+            const TimestampedQuaternion& tsq = qs.back();
+            //int sec, usec;
+            //tsq.getTimestamp(sec, usec);
+            //currentTransform.header.stamp = ros::Time(sec, 1000*usec);
+            currentTransform.header.stamp = ros::Time::now();
+            currentTransform.transform.rotation.x = tsq.i();
+            currentTransform.transform.rotation.y = tsq.j();
+            currentTransform.transform.rotation.z = tsq.k();
+            currentTransform.transform.rotation.w = tsq.r();
+            publishTransform();
+
+        }
+    } else {
+        // We must periodically republish due to ROS interval constraints
+        static int iteration_counter = 0;
+        iteration_counter++;
+        if (iteration_counter>=100) {
+            /*
+            //DEBUG section (TODO: remove for production)
+            // Impart a (fake) periodic horizontal swaying motion
+            static double DEBUG_t = 0.0;
+            DEBUG_t += 0.1;
+            tf2::Quaternion q;
+            q.setRPY(0, 0, 0.3*sin(DEBUG_t));
+            currentTransform.header.stamp = ros::Time::now();
+            currentTransform.transform.rotation.x = q.x();
+            currentTransform.transform.rotation.y = q.y();
+            currentTransform.transform.rotation.z = q.z();
+            currentTransform.transform.rotation.w = q.w();
+            */
+            currentTransform.header.stamp = ros::Time::now();
+            publishTransform();
+            iteration_counter = 0;
+        }
+    }
+}
+
+void StereoNodeBase::publishTransform() {
+    transformBroadcaster->sendTransform(currentTransform);
 }
 
 } // namespace

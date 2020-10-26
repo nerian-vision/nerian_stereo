@@ -29,8 +29,11 @@ public:
             while(ros::ok()) {
                 // Dispatch any queued ROS callbacks
                 ros::spinOnce();
-                // Get a single image set and process it
+                // Get a single image set and process it (if available)
                 processOneImageSet();
+                // Process available data from supplemental channels (IMU ...)
+                processDataChannels();
+                ros::Duration(0.001).sleep();
             }
         } catch(const std::exception& ex) {
             ROS_FATAL("Exception occured: %s", ex.what());
@@ -53,7 +56,9 @@ int main(int argc, char** argv) {
         ros::init(argc, argv, "nerian_stereo");
         nerian_stereo::StereoNode node;
         node.init();
+        node.initDataChannelService();
         node.initDynamicReconfigure();
+        node.publishTransform(); // initial transform
         return node.run();
     } catch(const std::exception& ex) {
         ROS_FATAL("Exception occured: %s", ex.what());
