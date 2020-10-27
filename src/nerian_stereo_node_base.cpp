@@ -97,8 +97,10 @@ void StereoNodeBase::init() {
         colorCodeLegend = false;
     }
 
-    if (!privateNh.getParam("frame", frame)) {
-        frame = "world";
+    if (!privateNh.getParam("top_level_frame", frame)) {
+        if (!privateNh.getParam("frame", frame)) {
+            frame = "world";
+        }
     }
 
     if (!privateNh.getParam("internal_frame", internalFrame)) {
@@ -263,7 +265,7 @@ void StereoNodeBase::publishImageMsg(const ImageSet& imageSet, int imageIndex, r
     }
 
     cv_bridge::CvImage cvImg;
-    cvImg.header.frame_id = frame;
+    cvImg.header.frame_id = internalFrame;
     cvImg.header.stamp = stamp;
     cvImg.header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
@@ -374,7 +376,7 @@ void StereoNodeBase::publishPointCloudMsg(ImageSet& imageSet, ros::Time stamp) {
 
     // Create message object and set header
     pointCloudMsg->header.stamp = stamp;
-    pointCloudMsg->header.frame_id = frame;
+    pointCloudMsg->header.frame_id = internalFrame;
     pointCloudMsg->header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
     // Copy 3D points
@@ -606,7 +608,7 @@ void StereoNodeBase::publishCameraInfo(ros::Time stamp, const ImageSet& imageSet
         // Initialize the camera info structure
         camInfoMsg.reset(new nerian_stereo::StereoCameraInfo);
 
-        camInfoMsg->header.frame_id = frame;
+        camInfoMsg->header.frame_id = internalFrame;
         camInfoMsg->header.seq = imageSet.getSequenceNumber(); // Actually ROS will overwrite this
 
         if(calibFile != "") {
