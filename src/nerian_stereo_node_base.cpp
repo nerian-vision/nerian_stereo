@@ -688,46 +688,46 @@ template<class T> void StereoNodeBase::readCalibrationArray(const char* key, T& 
 }
 
 void StereoNodeBase::processDataChannels() {
+    auto now = ros::Time::now();
+    if ((now - currentTransform.header.stamp).toSec() < 0.01) {
+        // Limit to 100 Hz transform update frequency
+        return;
+    }
     if (dataChannelService->imuAvailable()) {
-        // Try to pop the whole accumulated time series since the last poll
-        std::vector<TimestampedQuaternion> qs = dataChannelService->imuGetRotationQuaternionSeries();
-        // For now, we update the current orientation with the
-        //  latest one reported by the IMU of a device
-        if (qs.size()>0) {
-            const TimestampedQuaternion& tsq = qs.back();
-            //int sec, usec;
-            //tsq.getTimestamp(sec, usec);
-            //currentTransform.header.stamp = ros::Time(sec, 1000*usec);
-            currentTransform.header.stamp = ros::Time::now();
-            currentTransform.transform.rotation.x = tsq.i();
-            currentTransform.transform.rotation.y = tsq.j();
-            currentTransform.transform.rotation.z = tsq.k();
-            currentTransform.transform.rotation.w = tsq.r();
-            publishTransform();
+        // Obtain and publish the most recent orientation
+        TimestampedQuaternion tsq = dataChannelService->imuGetRotationQuaternion();
+        currentTransform.header.stamp = now;
+        currentTransform.transform.rotation.x = tsq.x();
+        currentTransform.transform.rotation.y = tsq.y();
+        currentTransform.transform.rotation.z = tsq.z();
+        currentTransform.transform.rotation.w = tsq.w();
 
-        }
+        /*
+        // DEBUG: Quaternion->Euler + debug output
+        double roll, pitch, yaw;
+        tf2::Quaternion q(tsq.x(), tsq.y(), tsq.z(), tsq.w());
+        tf2::Matrix3x3 m(q);
+        m.getRPY(roll, pitch, yaw);
+        std::cout << "Orientation:" << std::setprecision(2) << std::fixed << " Roll " << (180.0*roll/M_PI) << " Pitch " << (180.0*pitch/M_PI) << " Yaw " << (180.0*yaw/M_PI) << std::endl;
+        */
+
+        publishTransform();
     } else {
         // We must periodically republish due to ROS interval constraints
-        static int iteration_counter = 0;
-        iteration_counter++;
-        if (iteration_counter>=100) {
-            /*
-            //DEBUG section (TODO: remove for production)
-            // Impart a (fake) periodic horizontal swaying motion
-            static double DEBUG_t = 0.0;
-            DEBUG_t += 0.1;
-            tf2::Quaternion q;
-            q.setRPY(0, 0, 0.3*sin(DEBUG_t));
-            currentTransform.header.stamp = ros::Time::now();
-            currentTransform.transform.rotation.x = q.x();
-            currentTransform.transform.rotation.y = q.y();
-            currentTransform.transform.rotation.z = q.z();
-            currentTransform.transform.rotation.w = q.w();
-            */
-            currentTransform.header.stamp = ros::Time::now();
-            publishTransform();
-            iteration_counter = 0;
-        }
+        /*
+        // DEBUG: Impart a (fake) periodic horizontal swaying motion
+        static double DEBUG_t = 0.0;
+        DEBUG_t += 0.1;
+        tf2::Quaternion q;
+        q.setRPY(0, 0, 0.3*sin(DEBUG_t));
+        currentTransform.header.stamp = ros::Time::now();
+        currentTransform.transform.rotation.x = q.x();
+        currentTransform.transform.rotation.y = q.y();
+        currentTransform.transform.rotation.z = q.z();
+        currentTransform.transform.rotation.w = q.w();
+        */
+        currentTransform.header.stamp = now;
+        publishTransform();
     }
 }
 
