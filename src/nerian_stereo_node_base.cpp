@@ -697,15 +697,21 @@ void StereoNodeBase::processDataChannels() {
         // Obtain and publish the most recent orientation
         TimestampedQuaternion tsq = dataChannelService->imuGetRotationQuaternion();
         currentTransform.header.stamp = now;
-        currentTransform.transform.rotation.x = tsq.x();
-        currentTransform.transform.rotation.y = tsq.y();
-        currentTransform.transform.rotation.z = tsq.z();
+        if(rosCoordinateSystem) {
+            currentTransform.transform.rotation.x = tsq.x();
+            currentTransform.transform.rotation.y = -tsq.z();
+            currentTransform.transform.rotation.z = tsq.y();
+        } else {
+            currentTransform.transform.rotation.x = tsq.x();
+            currentTransform.transform.rotation.y = tsq.y();
+            currentTransform.transform.rotation.z = tsq.z();
+        }
         currentTransform.transform.rotation.w = tsq.w();
 
         /*
         // DEBUG: Quaternion->Euler + debug output
         double roll, pitch, yaw;
-        tf2::Quaternion q(tsq.x(), tsq.y(), tsq.z(), tsq.w());
+        tf2::Quaternion q(tsq.x(), rosCoordinateSystem?(-tsq.z()):tsq.y(), rosCoordinateSystem?tsq.y():tsq.z(), tsq.w());
         tf2::Matrix3x3 m(q);
         m.getRPY(roll, pitch, yaw);
         std::cout << "Orientation:" << std::setprecision(2) << std::fixed << " Roll " << (180.0*roll/M_PI) << " Pitch " << (180.0*pitch/M_PI) << " Yaw " << (180.0*yaw/M_PI) << std::endl;
