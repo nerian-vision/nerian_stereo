@@ -21,7 +21,7 @@
 
 #include <visiontransfer/asynctransfer.h>
 #include <visiontransfer/reconstruct3d.h>
-#include <visiontransfer/scenescanparameters.h>
+#include <visiontransfer/deviceparameters.h>
 #include <visiontransfer/exceptions.h>
 #include <visiontransfer/datachannelservice.h>
 
@@ -47,10 +47,10 @@ using namespace std;
 using namespace visiontransfer;
 
 /**
- * \brief A driver node that receives data from SceneScan/SP1 and forwards
+ * \brief A driver node that receives data from Nerian stereo devices and forwards
  * it to ROS.
  *
- * SceneScan and SP1 by Nerian Vision GmbH are hardware systems for
+ * SceneScan and Scarlet by Nerian Vision GmbH are hardware systems for
  * real-time stereo vision. They transmit a computed disparity map (an
  * inverse depth map) through gigabit ethernet, which is then received by
  * this node. The node converts the received data into ROS messages, which
@@ -62,7 +62,7 @@ using namespace visiontransfer;
  *
  * In addition, camera calibration information is also published. For
  * configuration parameters, please see the provided example launch file.
- * For more information about Nerian's SceneScan system, please visit
+ * For more information about Nerian's stereo systems, please visit
  * http://nerian.com/products/scenescan-stereo-vision/
  */
 
@@ -137,7 +137,7 @@ private:
     bool initialConfigReceived;
     
     // Connection to parameter server on device
-    boost::scoped_ptr<SceneScanParameters> sceneScanParameters;
+    boost::scoped_ptr<DeviceParameters> deviceParameters;
 
     // Parameters
     bool useTcp;
