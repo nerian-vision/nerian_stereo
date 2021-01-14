@@ -15,32 +15,42 @@
 #ifndef __NERIAN_STEREO_NODE_H__
 #define __NERIAN_STEREO_NODE_H__
 
-#include <ros/ros.h>
-#include <visiontransfer/asynctransfer.h>
-#include <visiontransfer/reconstruct3d.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/Image.h>
-#include <opencv2/opencv.hpp>
-#include <cv_bridge/cv_bridge.h>
 #include <iostream>
 #include <iomanip>
-#include <nerian_stereo/StereoCameraInfo.h>
 #include <boost/smart_ptr.hpp>
+
+#include <visiontransfer/asynctransfer.h>
+#include <visiontransfer/reconstruct3d.h>
+#include <visiontransfer/deviceparameters.h>
+#include <visiontransfer/exceptions.h>
+#include <visiontransfer/datachannelservice.h>
+
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/Image.h>
+#include <dynamic_reconfigure/server.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/opencv.hpp>
+
 #include <colorcoder.h>
 
-#include <dynamic_reconfigure/server.h>
 #include <nerian_stereo/NerianStereoConfig.h>
-#include <visiontransfer/scenescanparameters.h>
-#include <visiontransfer/exceptions.h>
+#include <nerian_stereo/StereoCameraInfo.h>
+
 
 using namespace std;
 using namespace visiontransfer;
 
 /**
- * \brief A driver node that receives data from SceneScan/SP1 and forwards
+ * \brief A driver node that receives data from Nerian stereo devices and forwards
  * it to ROS.
  *
- * SceneScan and SP1 by Nerian Vision GmbH are hardware systems for
+ * SceneScan and Scarlet by Nerian Vision GmbH are hardware systems for
  * real-time stereo vision. They transmit a computed disparity map (an
  * inverse depth map) through gigabit ethernet, which is then received by
  * this node. The node converts the received data into ROS messages, which
@@ -52,7 +62,7 @@ using namespace visiontransfer;
  *
  * In addition, camera calibration information is also published. For
  * configuration parameters, please see the provided example launch file.
- * For more information about Nerian's SceneScan system, please visit
+ * For more information about Nerian's stereo systems, please visit
  * http://nerian.com/products/scenescan-stereo-vision/
  */
 
@@ -76,6 +86,11 @@ public:
      */
     void initDynamicReconfigure();
 
+    /*
+     * \brief Initialize the data channel service (for receiving e.g. internal IMU data)
+     */
+    void initDataChannelService();
+
     /**
      * \brief Connects to the image service to request the stream of image sets
      */
@@ -85,6 +100,16 @@ public:
      * \brief Collect and process a single image set (or return after timeout if none are available)
      */
     void processOneImageSet();
+
+    /*
+     * \brief Queries the the supplemental data channels (IMU ...) for new data and updates ROS accordingly
+     */
+    void processDataChannels();
+
+    /*
+     * \brief Publishes an update for the ROS transform
+     */
+    void publishTransform();
 
 private:
     enum PointCloudColorMode {
@@ -104,13 +129,15 @@ private:
     boost::scoped_ptr<ros::Publisher> rightImagePublisher;
     boost::scoped_ptr<ros::Publisher> cameraInfoPublisher;
 
+    boost::scoped_ptr<tf2_ros::TransformBroadcaster> transformBroadcaster;
+
     // ROS dynamic_reconfigure
     boost::scoped_ptr<dynamic_reconfigure::Server<nerian_stereo::NerianStereoConfig>> dynReconfServer;
     nerian_stereo::NerianStereoConfig lastKnownConfig;
     bool initialConfigReceived;
     
     // Connection to parameter server on device
-    boost::scoped_ptr<SceneScanParameters> sceneScanParameters;
+    boost::scoped_ptr<DeviceParameters> deviceParameters;
 
     // Parameters
     bool useTcp;
@@ -119,7 +146,8 @@ private:
     bool rosCoordinateSystem;
     bool rosTimestamps;
     std::string remotePort;
-    std::string frame;
+    std::string frame; // outer frame (e.g. world)
+    std::string internalFrame; // our private frame / Transform we publish
     std::string remoteHost;
     std::string calibFile;
     double execDelay;
@@ -140,6 +168,11 @@ private:
     boost::scoped_ptr<AsyncTransfer> asyncTransfer;
     ros::Time lastLogTime;
     int lastLogFrames = 0;
+
+    // DataChannelService connection, to obtain IMU data
+    boost::scoped_ptr<DataChannelService> dataChannelService;
+    // Our transform, updated with polled IMU data (if available)
+    geometry_msgs::TransformStamped currentTransform;
 
     /**
      * \brief Loads a camera calibration file if configured
@@ -191,7 +224,7 @@ private:
      * \brief Reads a vector from the calibration file to a boost:array
      */
     template<class T> void readCalibrationArray(const char* key, T& dest);
-    
+
     /*
      * \brief Callback that receives an updated configuration from ROS; internally uses autogen_dynamicReconfigureCallback
      */

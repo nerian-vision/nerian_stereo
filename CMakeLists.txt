@@ -5,7 +5,7 @@ project(nerian_stereo)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs cv_bridge
-    message_generation dynamic_reconfigure)
+    message_generation dynamic_reconfigure tf2_ros)
 
 ## System dependencies are found with CMake's conventions
 find_package(OpenCV REQUIRED)
