@@ -188,7 +188,7 @@ void StereoNodeBase::prepareAsyncTransfer() {
 void StereoNodeBase::processOneImageSet() {
     // Receive image data
     ImageSet imageSet;
-    if(asyncTransfer->collectReceivedImageSet(imageSet, 0.0)) {
+    if(asyncTransfer->collectReceivedImageSet(imageSet, 0.1)) {
 
         // Get time stamp
         ros::Time stamp;
