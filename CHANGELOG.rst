@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.9.0 (2021-04-14)
+------------------
 * ROS transform (tf2) live updates for Nerian devices with IMU
 * Added script for splitting camera info
 * Updated vision software release
