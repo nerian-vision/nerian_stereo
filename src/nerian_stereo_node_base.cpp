@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019 Nerian Vision GmbH
+ * Copyright (c) 2021 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,13 +46,13 @@ void StereoNodeBase::initDynamicReconfigure() {
     // Connect to parameter server on device
     ROS_INFO("Connecting to %s for parameter service", remoteHost.c_str());
     try {
-        sceneScanParameters.reset(new SceneScanParameters(remoteHost.c_str()));
+        deviceParameters.reset(new DeviceParameters(remoteHost.c_str()));
     } catch(visiontransfer::ParameterException& e) {
         ROS_ERROR("ParameterException while connecting to parameter service: %s", e.what());
         throw;
     }
     try {
-        ssParams = sceneScanParameters->getAllParameters();
+        ssParams = deviceParameters->getAllParameters();
     } catch(visiontransfer::TransferException& e) {
         ROS_ERROR("TransferException while obtaining parameter enumeration: %s", e.what());
         throw;

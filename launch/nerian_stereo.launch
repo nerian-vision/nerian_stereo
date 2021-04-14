@@ -1,5 +1,5 @@
 <launch>
-    <!-- Configure the IP address of SceneScan/SP1 -->
+    <!-- Configure the IP address of Scarlet/SceneScan -->
     <arg name="device_address" default="192.168.10.10" />
 
     <!-- Configure the destination where the calibration will saved -->

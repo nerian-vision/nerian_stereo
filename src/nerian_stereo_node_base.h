@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019 Nerian Vision GmbH
+ * Copyright (c) 2021 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <nerian_stereo/NerianStereoConfig.h>
-#include <visiontransfer/scenescanparameters.h>
+#include <visiontransfer/deviceparameters.h>
 #include <visiontransfer/exceptions.h>
 
 using namespace std;
@@ -110,7 +110,7 @@ private:
     bool initialConfigReceived;
     
     // Connection to parameter server on device
-    boost::scoped_ptr<SceneScanParameters> sceneScanParameters;
+    boost::scoped_ptr<DeviceParameters> deviceParameters;
 
     // Parameters
     bool useTcp;
