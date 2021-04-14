@@ -18,6 +18,8 @@
   <build_depend>boost</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>nodelet</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_ros</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -29,6 +31,8 @@
   <run_depend>curl</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>nodelet</run_depend>
+  <run_depend>tf2</run_depend>
+  <run_depend>tf2_ros</run_depend>
 
   <export>
     <nodelet plugin="${prefix}/nodelet_plugins.xml" />
