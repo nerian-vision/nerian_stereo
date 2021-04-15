@@ -35,5 +35,3 @@ void StereoNodelet::onInit() {
 } // namespace
 
 PLUGINLIB_EXPORT_CLASS(nerian_stereo::StereoNodelet, nodelet::Nodelet)
-
-
