@@ -486,8 +486,8 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
     } else if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_8_BIT_RGB) {
         // Get pointer to the current pixel and end of current row
         unsigned char* imagePtr = imageSet.getPixelData(ImageSet::IMAGE_LEFT);
-        unsigned char* rowEndPtr = imagePtr + imageSet.getWidth();
-        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - imageSet.getWidth();
+        unsigned char* rowEndPtr = imagePtr + 3*imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - 3*imageSet.getWidth();
 
         static bool warned = false;
         if(colorMode == RGB_SEPARATE && !warned) {
