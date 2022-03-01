@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.9.1 (2022-03-01)
+------------------
 * Updated vision software release
 * Fixed point cloud color channel issue with large RGB images
 * Contributors: Konstantin Schauwecker
