@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2021 Nerian Vision GmbH
+ * Copyright (c) 2022 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,21 +28,20 @@ void StereoNodeBase::dynamicReconfigureCallback(nerian_stereo::NerianStereoConfi
     lastKnownConfig = config;
 }
 
-void StereoNodeBase::updateParameterServerFromDevice(std::map<std::string, ParameterInfo>& cfg) {
+void StereoNodeBase::updateParameterServerFromDevice(param::ParameterSet& cfg) {
     // Publish the current config to the parameter server
     autogen_updateParameterServerFromDevice(cfg);
     // Publish reboot flag to definitely be set to false in the parameter server
     getNH().setParam("/nerian_stereo/reboot", false);
 }
 
-void StereoNodeBase::updateDynamicReconfigureFromDevice(std::map<std::string, ParameterInfo>& cfg) {
+void StereoNodeBase::updateDynamicReconfigureFromDevice(param::ParameterSet& cfg) {
     autogen_updateDynamicReconfigureFromDevice(cfg);
 }
 /*
  * \brief Initialize and publish configuration with a dynamic_reconfigure server
  */
 void StereoNodeBase::initDynamicReconfigure() {
-    std::map<std::string, ParameterInfo> ssParams;
     // Connect to parameter server on device
     ROS_INFO("Connecting to %s for parameter service", remoteHost.c_str());
     try {
@@ -51,13 +50,14 @@ void StereoNodeBase::initDynamicReconfigure() {
         ROS_ERROR("ParameterException while connecting to parameter service: %s", e.what());
         throw;
     }
+    param::ParameterSet ssParams;
     try {
-        ssParams = deviceParameters->getAllParameters();
+        ssParams = deviceParameters->getParameterSet();
     } catch(visiontransfer::TransferException& e) {
-        ROS_ERROR("TransferException while obtaining parameter enumeration: %s", e.what());
+        ROS_ERROR("TransferException while obtaining parameter set: %s", e.what());
         throw;
     } catch(visiontransfer::ParameterException& e) {
-        ROS_ERROR("ParameterException while obtaining parameter enumeration: %s", e.what());
+        ROS_ERROR("ParameterException while obtaining parameter set: %s", e.what());
         throw;
     }
     // First make sure that the parameter server gets all *current* values
@@ -153,6 +153,8 @@ void StereoNodeBase::init() {
         "/nerian_stereo/left_image", 5)));
     rightImagePublisher.reset(new ros::Publisher(getNH().advertise<sensor_msgs::Image>(
         "/nerian_stereo/right_image", 5)));
+    thirdImagePublisher.reset(new ros::Publisher(getNH().advertise<sensor_msgs::Image>(
+        "/nerian_stereo/color_image", 5)));
 
     loadCameraCalibration();
 
@@ -209,6 +211,9 @@ void StereoNodeBase::processOneImageSet() {
         }
         if (imageSet.hasImageType(ImageSet::IMAGE_RIGHT)) {
             publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_RIGHT), stamp, false, rightImagePublisher.get());
+        }
+        if (imageSet.hasImageType(ImageSet::IMAGE_COLOR)) {
+            publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_COLOR), stamp, false, thirdImagePublisher.get());
         }
 
         if(cloudPublisher->getNumSubscribers() > 0) {
@@ -408,7 +413,7 @@ void StereoNodeBase::publishPointCloudMsg(ImageSet& imageSet, ros::Time stamp) {
         }
     }
 
-    if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
+    if (imageSet.hasImageType(ImageSet::IMAGE_LEFT) || imageSet.hasImageType(ImageSet::IMAGE_COLOR)) {
         // Copy intensity values as well (if we received any image data)
         switch(pointCloudColorMode) {
             case INTENSITY:
@@ -429,16 +434,17 @@ void StereoNodeBase::publishPointCloudMsg(ImageSet& imageSet, ros::Time stamp) {
 }
 
 template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::copyPointCloudIntensity(ImageSet& imageSet) {
+    auto imageIndex = imageSet.hasImageType(ImageSet::IMAGE_COLOR) ? ImageSet::IMAGE_COLOR : ImageSet::IMAGE_LEFT;
     // Get pointers to the beginning and end of the point cloud
     unsigned char* cloudStart = &pointCloudMsg->data[0];
     unsigned char* cloudEnd = &pointCloudMsg->data[0]
         + imageSet.getWidth()*imageSet.getHeight()*4*sizeof(float);
 
-    if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_8_BIT_MONO) {
+    if(imageSet.getPixelFormat(imageIndex) == ImageSet::FORMAT_8_BIT_MONO) {
         // Get pointer to the current pixel and end of current row
-        unsigned char* imagePtr = imageSet.getPixelData(ImageSet::IMAGE_LEFT);
+        unsigned char* imagePtr = imageSet.getPixelData(imageIndex);
         unsigned char* rowEndPtr = imagePtr + imageSet.getWidth();
-        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(imageIndex) - imageSet.getWidth();
 
         for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                 cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
@@ -458,11 +464,11 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
                 rowEndPtr = imagePtr + imageSet.getWidth();
             }
         }
-    } else if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_12_BIT_MONO) {
+    } else if(imageSet.getPixelFormat(imageIndex) == ImageSet::FORMAT_12_BIT_MONO) {
         // Get pointer to the current pixel and end of current row
-        unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imageSet.getPixelData(ImageSet::IMAGE_LEFT));
+        unsigned short* imagePtr = reinterpret_cast<unsigned short*>(imageSet.getPixelData(imageIndex));
         unsigned short* rowEndPtr = imagePtr + imageSet.getWidth();
-        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - 2*imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(imageIndex) - 2*imageSet.getWidth();
 
         for(unsigned char* cloudPtr = cloudStart + 3*sizeof(float);
                 cloudPtr < cloudEnd; cloudPtr+= 4*sizeof(float)) {
@@ -483,11 +489,11 @@ template <StereoNodeBase::PointCloudColorMode colorMode> void StereoNodeBase::co
                 rowEndPtr = imagePtr + imageSet.getWidth();
             }
         }
-    } else if(imageSet.getPixelFormat(ImageSet::IMAGE_LEFT) == ImageSet::FORMAT_8_BIT_RGB) {
+    } else if(imageSet.getPixelFormat(imageIndex) == ImageSet::FORMAT_8_BIT_RGB) {
         // Get pointer to the current pixel and end of current row
-        unsigned char* imagePtr = imageSet.getPixelData(ImageSet::IMAGE_LEFT);
+        unsigned char* imagePtr = imageSet.getPixelData(imageIndex);
         unsigned char* rowEndPtr = imagePtr + 3*imageSet.getWidth();
-        int rowIncrement = imageSet.getRowStride(ImageSet::IMAGE_LEFT) - 3*imageSet.getWidth();
+        int rowIncrement = imageSet.getRowStride(imageIndex) - 3*imageSet.getWidth();
 
         static bool warned = false;
         if(colorMode == RGB_SEPARATE && !warned) {
