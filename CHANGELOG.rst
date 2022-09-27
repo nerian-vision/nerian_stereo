@@ -2,6 +2,12 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.10.0 (2022-06-30)
+-------------------
+* Updated vision softare release to version 10.0.0
+* Disable Open3D in libvisiontransfer builds
+* Contributors: Konstantin Schauwecker
+
 3.9.1 (2022-03-01)
 ------------------
 * Updated vision software release
