@@ -168,6 +168,9 @@ private:
     nerian_stereo::StereoCameraInfoPtr camInfoMsg;
     ros::Time lastCamInfoPublish;
 
+    // Active channels in the previous ImageSet
+    bool hadLeft, hadRight, hadColor, hadDisparity;
+
     boost::scoped_ptr<AsyncTransfer> asyncTransfer;
     ros::Time lastLogTime;
     int lastLogFrames = 0;

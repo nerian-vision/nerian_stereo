@@ -202,18 +202,42 @@ void StereoNodeBase::processOneImageSet() {
             stamp = ros::Time(secs, microsecs*1000);
         }
 
+        bool hasLeft = false, hasRight = false, hasColor = false, hasDisparity = false;
+
         // Publish image data messages for all images included in the set
         if (imageSet.hasImageType(ImageSet::IMAGE_LEFT)) {
             publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_LEFT), stamp, false, leftImagePublisher.get());
+            hasLeft = true;
         }
         if (imageSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
             publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_DISPARITY), stamp, true, disparityPublisher.get());
+            hasDisparity = true;
         }
         if (imageSet.hasImageType(ImageSet::IMAGE_RIGHT)) {
             publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_RIGHT), stamp, false, rightImagePublisher.get());
+            hasRight = true;
         }
         if (imageSet.hasImageType(ImageSet::IMAGE_COLOR)) {
             publishImageMsg(imageSet, imageSet.getIndexOf(ImageSet::IMAGE_COLOR), stamp, false, thirdImagePublisher.get());
+            hasColor = true;
+        }
+
+        // Dump info about currently available topics (this can change when output channels are toggled)
+        if ((frameNum==0) || (hasLeft!=hadLeft) || (hasRight!=hadRight) || (hasColor!=hadColor) || (hasDisparity!=hadDisparity)) {
+            ROS_INFO("Topics currently being served, based on the device \"Output Channels\" settings:");
+            if (hasLeft) ROS_INFO( "  /nerian_stereo/left_image");
+            if (hasRight) ROS_INFO("  /nerian_stereo/right_image");
+            if (hasColor) ROS_INFO("  /nerian_stereo/color_image");
+            if (hasDisparity) {
+                ROS_INFO("  /nerian_stereo/disparity_map");
+                ROS_INFO("  /nerian_stereo/point_cloud");
+            } else {
+                ROS_WARN("Disparity channel deactivated on device -> no disparity or point cloud data!");
+            }
+            hadLeft = hasLeft;
+            hadRight = hasRight;
+            hadColor = hasColor;
+            hadDisparity = hasDisparity;
         }
 
         if(cloudPublisher->getNumSubscribers() > 0) {
