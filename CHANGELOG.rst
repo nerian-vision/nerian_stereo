@@ -2,6 +2,15 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Added log messages about actively served topics (based on run-time conf)
+* Added support for auto color from third Ruby camera (if enabled)
+* Better conformity with new parameter types
+* Initiate image tranfer despite any failure to connect to parameter server
+  (No dynamic parameters will be available; a verbose error is logged.)
+* Contributors: Dr. Konstantin Schauwecker, Ramin Yaghoubzadeh Torky
+
 3.10.0 (2022-06-30)
 -------------------
 * Updated vision softare release to version 10.0.0
