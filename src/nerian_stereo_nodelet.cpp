@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2021 Nerian Vision GmbH
+ * Copyright (c) 2022 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,11 @@ void StereoNodelet::stereoIteration(const ros::TimerEvent&) {
 void StereoNodelet::onInit() {
     StereoNodeBase::init();
     StereoNodeBase::initDataChannelService();
-    StereoNodeBase::initDynamicReconfigure();
+    try {
+        StereoNodeBase::initDynamicReconfigure();
+    } catch(...) {
+        ROS_ERROR("Handshake with parameter server failed; no dynamic parameters - please verify firmware version. Image transport is unaffected.");
+    }
     StereoNodeBase::publishTransform(); // initial transform
     prepareAsyncTransfer();
     // 2kHz timer for lower latency (stereoIteration will then block)

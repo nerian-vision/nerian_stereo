@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2021 Nerian Vision GmbH
+ * Copyright (c) 2022 Nerian Vision GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,11 @@ int main(int argc, char** argv) {
         nerian_stereo::StereoNode node;
         node.init();
         node.initDataChannelService();
-        node.initDynamicReconfigure();
+        try {
+            node.initDynamicReconfigure();
+        } catch(...) {
+            ROS_ERROR("Handshake with parameter server failed; no dynamic parameters - please verify firmware version. Image transport is unaffected.");
+        }
         node.publishTransform(); // initial transform
         return node.run();
     } catch(const std::exception& ex) {
