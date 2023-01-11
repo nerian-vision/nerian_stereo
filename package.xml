@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>nerian_stereo</name>
-  <version>3.10.0</version>
+  <version>3.11.0</version>
   <description>Driver node for Scarlet and SceneScan stereo vision sensors by Nerian Vision GmbH</description>
   <maintainer email="konstantin.schauwecker@nerian.com">Konstantin Schauwecker</maintainer>
   <license>MIT</license>

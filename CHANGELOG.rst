@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.11.0 (2023-01-11)
+-------------------
 * Added log messages about actively served topics (based on run-time conf)
 * Added support for auto color from third Ruby camera (if enabled)
 * Better conformity with new parameter types
