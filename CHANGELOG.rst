@@ -2,8 +2,8 @@
 Changelog for package nerian_stereo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.11.1 (2024-01-23)
+-------------------
 * Updated vision software release to 10.6.0
 * Changed intensity channel to RGB8 for default launch script
 * Contributors: Konstantin Schauwecker
